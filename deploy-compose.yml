@@ -258,7 +258,7 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:rshared
       - codeapi-packages:/host-packages:ro
     security_opt:
-      - seccomp=./code-interpreter/seccomp/nsjail.json
+      - seccomp=/opt/tspichat/seccomp/nsjail.json
       - apparmor=unconfined
     cap_add:
       - SYS_ADMIN
