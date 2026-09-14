@@ -249,8 +249,9 @@ COPY --from=nsjail-builder /usr/local/bin/sandbox-rootfs-setup /sandbox-rootfs-s
 COPY launcher/entrypoint.sh /usr/local/bin/launcher-entrypoint.sh
 COPY docker/start-direct-sandbox.sh /usr/local/bin/start-direct-sandbox.sh
 COPY docker/sandbox-runner-healthcheck.sh /usr/local/bin/sandbox-runner-healthcheck.sh
+COPY docker/sandbox-runner-healthcheck-guest.sh /sandbox_healthcheck.sh
 COPY docker/sandbox-entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/launcher-entrypoint.sh /usr/local/bin/start-direct-sandbox.sh /usr/local/bin/sandbox-runner-healthcheck.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/launcher-entrypoint.sh /usr/local/bin/start-direct-sandbox.sh /usr/local/bin/sandbox-runner-healthcheck.sh /usr/local/bin/entrypoint.sh /sandbox_healthcheck.sh
 
 EXPOSE 2000/tcp
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
