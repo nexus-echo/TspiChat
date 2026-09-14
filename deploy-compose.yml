@@ -278,7 +278,7 @@ services:
     networks:
       - code-private
     healthcheck:
-      test: ["CMD", "/usr/local/bin/sandbox-runner-healthcheck.sh"]
+      test: ["CMD-SHELL", "exec /bin/bash /usr/local/bin/sandbox-runner-healthcheck.sh"]
       interval: 5s
       timeout: 3s
       retries: 60
