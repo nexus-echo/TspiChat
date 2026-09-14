@@ -131,7 +131,6 @@ services:
     environment:
       - LOCAL_MODE=false
       - CODEAPI_HARDENED_SANDBOX_MODE=true
-      - CODEAPI_EGRESS_LEDGER_REQUIRED=true
       - CODEAPI_AUTH_PROVIDER=librechat-jwt
       - CODEAPI_JWT_ISSUER=librechat
       - CODEAPI_JWT_AUDIENCE=codeapi
@@ -171,7 +170,6 @@ services:
     environment:
       - LOCAL_MODE=false
       - CODEAPI_HARDENED_SANDBOX_MODE=true
-      - CODEAPI_EGRESS_LEDGER_REQUIRED=true
       - CODEAPI_AUTH_PROVIDER=librechat-jwt
       - CODEAPI_JWT_SINGLE_TENANT_ID=legacy
       - CODEAPI_TENANT_ISOLATION_STRICT=true
@@ -217,12 +215,12 @@ services:
       target: sandbox-runner-false
     restart: always
     privileged: false
+    cgroup: host
     environment:
       - KVM_ENABLED=false
       - SANDBOX_USE_CGROUPV2=true
       - SANDBOX_REMOVE_UMOUNT_AFTER_STARTUP=true
       - CODEAPI_HARDENED_SANDBOX_MODE=true
-      - CODEAPI_EGRESS_LEDGER_REQUIRED=true
       - EGRESS_GATEWAY_URL=http://egress_gateway:3190
       - SANDBOX_EXECUTE_BODY_LIMIT=50mb
       - SANDBOX_PACKAGES_DIRECTORY=/pkgs
@@ -243,9 +241,11 @@ services:
       - SANDBOX_RUNNER_CLOCK_SKEW_LIVENESS_LIMIT_SECONDS=10
       - SANDBOX_RUNNER_HEALTHCHECK_TIMEOUT_SECONDS=2
     volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rshared
       - codeapi-packages:/host-packages:ro
     security_opt:
       - seccomp=./code-interpreter/seccomp/nsjail.json
+      - apparmor=unconfined
     cap_add:
       - SYS_ADMIN
       - SYS_CHROOT
@@ -279,7 +279,6 @@ services:
     environment:
       - SERVICE_NAME=egress-gateway
       - CODEAPI_HARDENED_SANDBOX_MODE=true
-      - CODEAPI_EGRESS_LEDGER_REQUIRED=true
       - EGRESS_GATEWAY_PORT=3190
       - EGRESS_GATEWAY_FILE_SERVER_URL=http://code-file-server:3000
       - EGRESS_GATEWAY_TOOL_CALL_SERVER_URL=http://tool-call-server:3033
