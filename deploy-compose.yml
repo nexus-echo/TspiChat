@@ -50,6 +50,18 @@ services:
 
   admin-panel:
     image: registry.librechat.ai/clickhouse/librechat-admin-panel:latest
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=cxdoqdslq6dwavqelmuujog2_default
+      - traefik.http.middlewares.admin-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.admin-http.entrypoints=http
+      - traefik.http.routers.admin-http.rule=Host(`admin.tspipro.com`)
+      - traefik.http.routers.admin-http.middlewares=admin-redirect
+      - traefik.http.routers.admin-https.entrypoints=https
+      - traefik.http.routers.admin-https.rule=Host(`admin.tspipro.com`)
+      - traefik.http.routers.admin-https.tls=true
+      - traefik.http.routers.admin-https.tls.certresolver=letsencrypt
+      - traefik.http.services.admin.loadbalancer.server.port=3000
     depends_on:
       - api
     restart: always
@@ -64,6 +76,18 @@ services:
 
   client:
     image: nginx:1.27.0-alpine
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=cxdoqdslq6dwavqelmuujog2_default
+      - traefik.http.middlewares.client-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.client-http.entrypoints=http
+      - traefik.http.routers.client-http.rule=Host(`chat.tspipro.com`)
+      - traefik.http.routers.client-http.middlewares=client-redirect
+      - traefik.http.routers.client-https.entrypoints=https
+      - traefik.http.routers.client-https.rule=Host(`chat.tspipro.com`)
+      - traefik.http.routers.client-https.tls=true
+      - traefik.http.routers.client-https.tls.certresolver=letsencrypt
+      - traefik.http.services.client.loadbalancer.server.port=80
     depends_on:
       - api
       - admin-panel
