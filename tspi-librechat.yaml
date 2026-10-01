@@ -50,12 +50,27 @@ mcpServers:
     timeout: 120000
 
 endpoints:
+  # Production target (not used on staging yet): switch the spec preset back to
+  # `endpoint: anthropic`, `model: claude-sonnet-5-5` and set ENDPOINTS=agents,anthropic.
   anthropic:
     models:
       - claude-sonnet-5-5
       - claude-haiku-4-5-20251001
     titleConvo: true
     titleModel: claude-haiku-4-5-20251001
+  # Staging model: DeepSeek (OpenAI-compatible API). Key stays server-side in DEEPSEEK_API_KEY.
+  custom:
+    - name: DeepSeek
+      apiKey: '${DEEPSEEK_API_KEY}'
+      baseURL: 'https://api.deepseek.com/v1'
+      models:
+        default:
+          - deepseek-v4-pro
+          - deepseek-flash
+        fetch: false
+      titleConvo: true
+      titleModel: deepseek-flash
+      modelDisplayLabel: DeepSeek
 
 modelSpecs:
   enforce: true
@@ -74,8 +89,8 @@ modelSpecs:
         - Continue a draft treatment plan
         - Record a follow-up outcome
       preset:
-        endpoint: anthropic
-        model: claude-sonnet-5-5
+        endpoint: DeepSeek # staging; production: anthropic / claude-sonnet-5-5
+        model: deepseek-v4-pro
         promptPrefix: |
           You are TSPI Digital, a clinical assistant for licensed clinicians using the TSPI AI Brain.
           - Collect only de-identified data: a case code, age band, sex, symptoms, labs with units,
