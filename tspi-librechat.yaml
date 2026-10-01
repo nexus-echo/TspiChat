@@ -2,15 +2,91 @@ version: 1.3.15
 
 cache: true
 
+# TSPI Digital — clinician chat for TSPI Brain.
+# Day 1 (access and model): WorkOS login, per-user token passthrough to the TSPI MCP,
+# one locked clinical model spec. UI lock-down, Skill and branding follow on Day 2.
+
 interface:
+  # Clinicians never pick a model or tune parameters; admins get these back
+  # through a role override in the admin panel (admin.tspipro.com).
+  modelSelect: false
+  parameters: false
+  presets: false
   agents:
+    use: true # the locked model spec runs as an ephemeral agent (needed for MCP tools)
+    create: false
+    share: false
+    public: false
+  mcpServers:
     use: true
-    create: true
+    create: false
     share: false
     public: false
   webSearch: true
+  runCode: true
+  temporaryChat: true
+  defaultPinnedTools:
+    - 'web_search'
+    - 'execute_code'
+    - 'mcp'
 
 webSearch:
   searchProvider: keenable
   scraperProvider: keenable
   rerankerType: none
+
+mcpServers:
+  tspi:
+    title: TSPI Brain
+    description: TSPI AI Brain clinical decision support (de-identified cases only)
+    type: streamable-http
+    url: https://mcp.tspipro.com/mcp
+    headers:
+      # Each clinician's own WorkOS access token (requires OPENID_REUSE_TOKENS=true).
+      Authorization: 'Bearer {{LIBRECHAT_OPENID_ACCESS_TOKEN}}'
+    serverInstructions: true # pulls the server's de-identification rules into the prompt
+    chatMenu: false # clinicians cannot switch it off
+    startup: false # no app-level connection: every connection is per user, with their token
+    timeout: 120000
+
+endpoints:
+  anthropic:
+    models:
+      - claude-sonnet-5-5
+      - claude-haiku-4-5-20251001
+    titleConvo: true
+    titleModel: claude-haiku-4-5-20251001
+
+modelSpecs:
+  enforce: true
+  prioritize: true
+  list:
+    - name: tspi-clinical
+      label: TSPI Clinical Assistant
+      description: Analyse de-identified cases and draft TSPI treatment plans for physician review
+      default: true
+      mcpServers:
+        - tspi
+      webSearch: true
+      executeCode: true
+      conversation_starters:
+        - Analyse a new case
+        - Continue a draft treatment plan
+        - Record a follow-up outcome
+      preset:
+        endpoint: anthropic
+        model: claude-sonnet-5-5
+        promptPrefix: |
+          You are TSPI Digital, a clinical assistant for licensed clinicians using the TSPI AI Brain.
+          - Collect only de-identified data: a case code, age band, sex, symptoms, labs with units,
+            medications and conditions. Never ask for or submit a name, date of birth, MRN, phone,
+            email or address. If the clinician types one, do not repeat it and ask for a case code.
+          - For a new case, always run tspi_screen_red_flags first, then continue only if the
+            clinician wants to proceed.
+          - The TSPI engine is the only source of clinical conclusions. Present its output as-is and
+            never invent or estimate scores, networks, modules, doses, evidence grades or outcomes.
+          - After a plan is generated, compare the labs you submitted with the engine's returned
+            signals and list any lab the engine did not use before asking for approval.
+          - A generated plan is an AI draft. Never call tspi_approve_treatment_plan unless the
+            clinician has explicitly asked to approve that specific report_id in this conversation.
+          - Keep case details out of web searches; search only for general medical literature.
