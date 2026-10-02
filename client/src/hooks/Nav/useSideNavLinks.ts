@@ -22,7 +22,6 @@ import type { TInterfaceConfig, TEndpointsConfig } from 'librechat-data-provider
 import type { NavLink } from '~/common';
 import {
   useAgentCapabilities,
-  useMCPServerManager,
   useGetAgentsConfig,
   useHasAccess,
 } from '~/hooks';
@@ -62,6 +61,12 @@ export default function useSideNavLinks({
     permissionType: PermissionTypes.SKILLS,
     permission: Permissions.USE,
   });
+  /** TSPI: the Skills panel is an authoring surface; users who can only USE skills
+   *  (clinicians) still get them applied through the model spec, without the panel. */
+  const hasAccessToCreateSkills = useHasAccess({
+    permissionType: PermissionTypes.SKILLS,
+    permission: Permissions.CREATE,
+  });
   const hasAccessToBookmarks = useHasAccess({
     permissionType: PermissionTypes.BOOKMARKS,
     permission: Permissions.USE,
@@ -82,10 +87,6 @@ export default function useSideNavLinks({
     permissionType: PermissionTypes.AGENTS,
     permission: Permissions.CREATE,
   });
-  const hasAccessToUseMCPSettings = useHasAccess({
-    permissionType: PermissionTypes.MCP_SERVERS,
-    permission: Permissions.USE,
-  });
   const hasAccessToCreateMCP = useHasAccess({
     permissionType: PermissionTypes.MCP_SERVERS,
     permission: Permissions.CREATE,
@@ -94,7 +95,6 @@ export default function useSideNavLinks({
     permissionType: PermissionTypes.SCHEDULES,
     permission: Permissions.USE,
   });
-  const { availableMCPServers } = useMCPServerManager();
 
   const { agentsConfig } = useGetAgentsConfig({ endpointsConfig });
   const { skillsEnabled } = useAgentCapabilities(agentsConfig?.capabilities);
@@ -136,7 +136,7 @@ export default function useSideNavLinks({
       });
     }
 
-    if (hasAccessToSkills && skillsEnabled) {
+    if (hasAccessToSkills && hasAccessToCreateSkills && skillsEnabled) {
       links.push({
         title: 'com_ui_skills',
         label: '',
@@ -219,10 +219,9 @@ export default function useSideNavLinks({
       });
     }
 
-    if (
-      (hasAccessToUseMCPSettings && availableMCPServers && availableMCPServers.length > 0) ||
-      hasAccessToCreateMCP
-    ) {
+    /** TSPI: MCP settings are operator configuration. Show the panel only to users who can
+     *  create MCP servers (admins); clinicians keep using the configured servers. */
+    if (hasAccessToCreateMCP) {
       links.push({
         title: 'com_nav_setting_mcp',
         label: '',
@@ -251,6 +250,7 @@ export default function useSideNavLinks({
     hasAccessToCreateAgents,
     hasAccessToPrompts,
     hasAccessToSkills,
+    hasAccessToCreateSkills,
     skillsEnabled,
     hasAccessToMemories,
     hasAccessToReadMemories,
@@ -259,8 +259,6 @@ export default function useSideNavLinks({
     interfaceConfig.parameters,
     endpointType,
     hasAccessToBookmarks,
-    availableMCPServers,
-    hasAccessToUseMCPSettings,
     hasAccessToCreateMCP,
     includeHidePanel,
     hidePanel,
