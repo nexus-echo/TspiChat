@@ -461,7 +461,8 @@ export function sourcemapExclude(opts?: SourcemapExclude): Plugin {
 /**
  * Production builds set `publicDir: false`, so nothing under public/ reaches dist on its
  * own. This copies what the server actually has to serve: all of public/assets (the PWA
- * icons plus the endpoint, tool and language logos referenced at runtime) and robots.txt.
+ * icons plus the endpoint, tool and language logos referenced at runtime), robots.txt and
+ * public/legal (TSPI privacy and terms pages).
  * public/fonts is deliberately left out, since fonts are emitted as bundle assets through
  * the `$fonts` alias.
  *
@@ -489,6 +490,10 @@ export function copyPublicAssets(): Plugin {
         path.join(publicDir, 'robots.txt'),
         path.join(outDir, 'robots.txt'),
       );
+      // TSPI: internal Privacy Policy and Terms of Service pages (/legal/*.html)
+      await fs.promises.cp(path.join(publicDir, 'legal'), path.join(outDir, 'legal'), {
+        recursive: true,
+      });
     },
   };
 }
