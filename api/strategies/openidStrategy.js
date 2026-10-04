@@ -129,6 +129,12 @@ class CustomOpenIDStrategy extends OpenIDStrategy {
       params.set('state', options.state);
     }
 
+    /** TSPI: `/oauth/openid?screen_hint=sign-up` opens the provider's sign-up screen (WorkOS
+     *  AuthKit). Only this exact value is forwarded; anything else is ignored. */
+    if (req?.query?.screen_hint === 'sign-up' && !params.has('screen_hint')) {
+      params.set('screen_hint', 'sign-up');
+    }
+
     const authorizationAudience = getOpenIdAuthorizationAudience();
     if (authorizationAudience) {
       params.set('audience', authorizationAudience);
