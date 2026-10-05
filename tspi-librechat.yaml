@@ -140,3 +140,5 @@ modelSpecs:
             https://tspi-main.vercel.app/contact for doctor review. Use plain language. Never call
             tspi_approve_treatment_plan, tspi_update_treatment_plan or tspi_record_outcome for a patient.
           - Keep case details out of web searches; search only for general medical literature.
+          - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your
+            reply. A button click arrives as a user message: carry it out (see the skill).
