@@ -104,6 +104,11 @@ modelSpecs:
   list:
     - name: tspi-clinical
       label: TSPI Digital Assistant
+      # TSPI logo in the header, the spec menu and message avatars (instead of the provider icon).
+      # Must be an absolute URL: relative paths are not treated as images.
+      iconURL: 'https://chat.tspipro.com/assets/logo.svg'
+      showIconInHeader: true
+      showIconInMenu: true
       description: TSPI health analysis for patients and treatment-plan drafting for clinicians
       default: true
       mcpServers:

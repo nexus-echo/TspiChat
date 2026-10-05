@@ -5,6 +5,7 @@ const { logoutUser } = require('~/server/services/AuthService');
 const { deleteAllRefreshTokenBridges } = require('~/server/services/RefreshTokenBridge');
 const { revokeOpenIDRefreshTokenChain } = require('~/server/services/OpenIDRefreshRecovery');
 const { getOpenIdConfig } = require('~/strategies');
+const { buildWorkOSLogoutUrl } = require('~/server/utils/workosLogout');
 
 /** Parses and validates OPENID_MAX_LOGOUT_URL_LENGTH, returning defaultValue on invalid input */
 function parseMaxLogoutUrlLength(defaultValue = 2000) {
@@ -40,6 +41,10 @@ const logoutController = async (req, res) => {
     idToken ||
     (isOpenIdUser ? req.session?.openidLogoutIdToken : undefined) ||
     parsedCookies.openid_id_token;
+  /** TSPI: WorkOS access token (carries the `sid` claim), captured before the session is cleared. */
+  const workosTokens = isOpenIdUser
+    ? [req.session?.openidTokens?.accessToken, parsedCookies.openid_access_token, idToken]
+    : [];
   const logoutTokens = isOpenIdUser
     ? [...new Set([parsedCookies.refreshToken, sessionRefreshToken].filter(Boolean))]
     : [refreshToken];
@@ -93,7 +98,19 @@ const logoutController = async (req, res) => {
       tenantId: req.user?.tenantId,
     });
     const response = { message };
+    /** TSPI: end the WorkOS AuthKit session too (WorkOS has no OIDC end_session_endpoint). */
+    if (isOpenIdUser && isEnabled(process.env.OPENID_WORKOS_LOGOUT)) {
+      const workosLogoutUrl = buildWorkOSLogoutUrl({ tokens: workosTokens });
+      if (workosLogoutUrl) {
+        response.redirect = workosLogoutUrl;
+      } else {
+        logger.warn(
+          '[logoutController] OPENID_WORKOS_LOGOUT is on but no WorkOS session id (sid) was found',
+        );
+      }
+    }
     if (
+      !response.redirect &&
       isOpenIdUser &&
       isEnabled(process.env.OPENID_USE_END_SESSION_ENDPOINT) &&
       process.env.OPENID_ISSUER

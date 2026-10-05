@@ -18,7 +18,12 @@ import { useLocalize } from '~/hooks';
 
 const defaultInterface = getConfigDefaults().interface;
 
-function ModelSelectorContent() {
+/**
+ * TSPI: `locked` (interface.modelSelect === false, i.e. clinicians and patients) shows the
+ * active model spec as a plain label: no dropdown, no tooltip, no Ctrl+Shift+M shortcut target.
+ * Admins get modelSelect back through the admin panel and keep the full selector.
+ */
+function ModelSelectorContent({ locked = false }: { locked?: boolean }) {
   const localize = useLocalize();
   const modelSelectorHint = useShortcutHint('openModelSelector', localize('com_ui_select_model'));
   const modelSelectorAriaKey = useShortcutAriaKey('openModelSelector');
@@ -64,6 +69,24 @@ function ModelSelectorContent() {
       }),
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
+
+  if (locked) {
+    return (
+      <div className="relative flex min-w-0 max-w-[60vw] flex-col items-center gap-2 sm:max-w-xs">
+        <div
+          data-testid="model-selector-locked"
+          className="my-1 flex h-9 max-w-full cursor-default select-none items-center gap-2 rounded-xl border border-border-light bg-presentation px-3 py-2 text-sm text-text-primary"
+        >
+          {selectedIcon && React.isValidElement(selectedIcon) && (
+            <div className="flex flex-shrink-0 items-center justify-center overflow-hidden">
+              {selectedIcon}
+            </div>
+          )}
+          <span className="truncate text-left">{selectedDisplayValue}</span>
+        </div>
+      </div>
+    );
+  }
 
   const trigger = (
     <TooltipAnchor
@@ -141,7 +164,7 @@ export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   return (
     <ModelSelectorChatProvider>
       <ModelSelectorProvider startupConfig={startupConfig}>
-        <ModelSelectorContent />
+        <ModelSelectorContent locked={interfaceConfig.modelSelect === false} />
       </ModelSelectorProvider>
     </ModelSelectorChatProvider>
   );
