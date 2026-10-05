@@ -838,6 +838,10 @@ const setOpenIDAuthTokens = (
       logger.error('[setOpenIDAuthTokens] No access token found in tokenset');
       return;
     }
+    /** TSPI: a fresh sign-in completed, so stop forcing prompt=login. */
+    if (req?.cookies?.tspi_reauth && typeof res?.clearCookie === 'function') {
+      res.clearCookie('tspi_reauth', { path: '/' });
+    }
 
     const refreshToken = tokenset.refresh_token || existingRefreshToken;
 

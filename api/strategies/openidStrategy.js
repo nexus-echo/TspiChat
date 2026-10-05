@@ -135,6 +135,12 @@ class CustomOpenIDStrategy extends OpenIDStrategy {
       params.set('screen_hint', 'sign-up');
     }
 
+    /** TSPI: after a chat sign-out, make WorkOS AuthKit ask for credentials again even though
+     *  its own session cookie is still present (see api/server/utils/workosLogout.js). */
+    if (req?.cookies?.tspi_reauth === '1' && !params.has('prompt')) {
+      params.set('prompt', 'login');
+    }
+
     const authorizationAudience = getOpenIdAuthorizationAudience();
     if (authorizationAudience) {
       params.set('audience', authorizationAudience);

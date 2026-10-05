@@ -66,4 +66,30 @@ function buildWorkOSLogoutUrl({ tokens, returnTo, env = process.env }) {
   return url.toString();
 }
 
-module.exports = { buildWorkOSLogoutUrl, getWorkOSSessionId, decodeJwtPayload };
+/**
+ * TSPI: WorkOS OAuth-app sign-ins (TSPI Chat) create no WorkOS user session, so there is no `sid`
+ * and nothing for the logout endpoint to end; the AuthKit cookie then signs the user straight back
+ * in. Instead, chat sign-out sets this short-lived cookie and the next authorization request adds
+ * `prompt=login`, which makes AuthKit ask for credentials again (verified on the AuthKit domain).
+ * Enabled with OPENID_FORCE_LOGIN_AFTER_LOGOUT=true.
+ */
+const REAUTH_COOKIE = 'tspi_reauth';
+const REAUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function reauthCookieOptions(env = process.env) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: (env.DOMAIN_SERVER || '').startsWith('https://'),
+    maxAge: REAUTH_COOKIE_MAX_AGE_MS,
+    path: '/',
+  };
+}
+
+module.exports = {
+  buildWorkOSLogoutUrl,
+  getWorkOSSessionId,
+  decodeJwtPayload,
+  REAUTH_COOKIE,
+  reauthCookieOptions,
+};

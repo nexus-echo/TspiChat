@@ -1,4 +1,9 @@
-const { buildWorkOSLogoutUrl, getWorkOSSessionId } = require('./workosLogout');
+const {
+  buildWorkOSLogoutUrl,
+  getWorkOSSessionId,
+  REAUTH_COOKIE,
+  reauthCookieOptions,
+} = require('./workosLogout');
 
 const jwt = (payload) =>
   ['eyJhbGciOiJSUzI1NiJ9', Buffer.from(JSON.stringify(payload)).toString('base64url'), 'sig'].join(
@@ -34,5 +39,12 @@ describe('workosLogout', () => {
     expect(buildWorkOSLogoutUrl({ tokens: [jwt({ sub: 'user_1' })], env })).toBeNull();
     expect(buildWorkOSLogoutUrl({ tokens: [], env })).toBeNull();
     expect(getWorkOSSessionId(jwt({ sid: 'session_1&return_to=https://evil.example' }))).toBeNull();
+  });
+
+  it('sets a secure, http-only re-auth cookie for HTTPS deployments', () => {
+    expect(REAUTH_COOKIE).toBe('tspi_reauth');
+    const opts = reauthCookieOptions({ DOMAIN_SERVER: 'https://chat.tspipro.com' });
+    expect(opts).toMatchObject({ httpOnly: true, sameSite: 'lax', secure: true, path: '/' });
+    expect(reauthCookieOptions({ DOMAIN_SERVER: 'http://localhost:3080' }).secure).toBe(false);
   });
 });

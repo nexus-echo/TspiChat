@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { TooltipAnchor } from '@librechat/client';
-import { getConfigDefaults } from 'librechat-data-provider';
+import { getConfigDefaults, SystemRoles } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
 import {
   renderModelSpecs,
@@ -12,14 +12,14 @@ import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorC
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
 import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
+import { useLocalize, useAuthContext } from '~/hooks';
 import { CustomMenu as Menu } from './CustomMenu';
 import DialogManager from './DialogManager';
-import { useLocalize } from '~/hooks';
 
 const defaultInterface = getConfigDefaults().interface;
 
 /**
- * TSPI: `locked` (interface.modelSelect === false, i.e. clinicians and patients) shows the
+ * TSPI: `locked` (non-admin users, or interface.modelSelect === false) shows the
  * active model spec as a plain label: no dropdown, no tooltip, no Ctrl+Shift+M shortcut target.
  * Admins get modelSelect back through the admin panel and keep the full selector.
  */
@@ -153,7 +153,11 @@ function ModelSelectorContent({ locked = false }: { locked?: boolean }) {
 }
 
 export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
+  const { user } = useAuthContext();
   const interfaceConfig = startupConfig?.interface ?? defaultInterface;
+  /** TSPI: only admins may switch models. Locked by role, so an admin-panel override that turns
+   *  modelSelect on for everyone still cannot give clinicians or patients a model dropdown. */
+  const locked = interfaceConfig.modelSelect === false || user?.role !== SystemRoles.ADMIN;
   const modelSpecs = startupConfig?.modelSpecs?.list ?? [];
 
   // Hide the selector when modelSelect is false and there are no model specs to show
@@ -164,7 +168,7 @@ export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   return (
     <ModelSelectorChatProvider>
       <ModelSelectorProvider startupConfig={startupConfig}>
-        <ModelSelectorContent locked={interfaceConfig.modelSelect === false} />
+        <ModelSelectorContent locked={locked} />
       </ModelSelectorProvider>
     </ModelSelectorChatProvider>
   );
