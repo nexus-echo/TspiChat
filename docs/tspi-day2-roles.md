@@ -20,16 +20,24 @@ role cache is cleared.
 mongosh LibreChat tspi-day2-roles.mongosh.js
 ```
 
-Result:
+Result (USER covers both clinicians and patients):
 
-| Feature | USER (clinician) | ADMIN |
+| Feature | USER (clinician, patient) | ADMIN |
 | --- | --- | --- |
-| Chat, history, search, bookmarks, files | Yes | Yes |
-| TSPI MCP tools, treatment-plan Skill (applied automatically) | Yes | Yes |
-| Prompts, memories, multi-chat | No | Yes |
+| Chat, history, search, bookmarks, files (attach) | Yes | Yes |
+| Prompts, memories, skills panel, scheduled chats | Yes | Yes |
+| TSPI MCP, Web Search, Run Code, treatment-plan Skill (always on via the model spec) | Yes | Yes |
 | Agent Builder | No | Yes |
-| Skills panel (authoring) | No | Yes |
 | MCP Settings panel | No | Yes |
+| Multi-chat | No | Yes |
+
+Yaml side of the same change (`tspi-librechat.yaml`):
+
+- `interface.schedules: true` switches scheduled chats on (off by default in LibreChat).
+- `memory:` block gives memories a background model; it is told to save preferences only, never case data.
+- `hideBadgeRow: true` on the `tspi-clinical` spec removes the Tools button and the tool chips from the
+  chat box. Web Search, Run Code and TSPI MCP stay on: the server adds the spec's `webSearch`,
+  `executeCode` and `mcpServers` to every request whatever the browser sends.
 
 ## 2. Give admins the model picker back (admin panel)
 
@@ -45,5 +53,5 @@ switched off for everyone in the yaml. To turn them back on for admins only:
 
 | Account | Expect |
 | --- | --- |
-| Clinician (e.g. daphal.chaitanya84@gmail.com) | Sidebar: New chat, history, search, bookmarks, files, account. No Agent Builder, Skills, MCP Settings, Prompts, Memories. No model picker. TSPI Digital name and logo. Terms-of-use dialog on first login. |
-| Admin (chaitanya.daphal84@gmail.com) | Everything above plus Agent Builder, Skills, MCP Settings, Prompts, Memories, and the model picker. |
+| Clinician (e.g. daphal.chaitanya84@gmail.com) or patient | Sidebar: New chat, history, search, skills, scheduled chats, prompts, memories, bookmarks, files, account. No Agent Builder, no MCP Settings. Chat box: attach button only, no Tools button or tool chips. No model picker. TSPI Digital name and logo. Terms-of-use dialog on first login. |
+| Admin (chaitanya.daphal84@gmail.com) | Everything above plus Agent Builder, MCP Settings and the model picker. |

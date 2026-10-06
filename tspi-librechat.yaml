@@ -32,6 +32,9 @@ interface:
   runCode: true
   temporaryChat: true
   feedback: true
+  # Scheduled chats (sidebar). Experimental in LibreChat and off unless switched on here.
+  # Per-role USE/CREATE is set in docs/tspi-day2-roles.mongosh.js.
+  schedules: true
   defaultPinnedTools:
     - 'web_search'
     - 'execute_code'
@@ -55,6 +58,18 @@ interface:
       4. **No identifiers.** Do not enter names, dates of birth, record numbers, phone numbers, emails or addresses.
       5. **Emergencies.** TSPI Digital is not for emergencies. If you have severe symptoms, call your local emergency number (India 112, Thailand 1669) or go to the nearest hospital.
       6. **Records.** Your conversations, uploads, reports, approvals and edits are stored and logged under your account, as described in the Privacy Policy.
+
+# Memories (sidebar). A small background model saves user preferences between chats.
+memory:
+  disabled: false
+  personalize: true
+  agent:
+    provider: DeepSeek # staging; production: anthropic / claude-haiku-4-5-20251001
+    model: deepseek-flash
+    instructions: |
+      Save only the user's working preferences (language, report style, units, how they like
+      answers formatted). Never save patient or case details: no symptoms, labs, diagnoses,
+      medications, ages, case codes, names, dates of birth, record numbers or contact details.
 
 webSearch:
   searchProvider: keenable
@@ -109,6 +124,9 @@ modelSpecs:
       iconURL: 'https://chat.tspipro.com/assets/logo.svg'
       showIconInHeader: true
       showIconInMenu: true
+      # No Tools button and no tool chips in the chat box. Web search, Run Code and TSPI MCP
+      # below are still always on: the server adds a spec's tools to every request.
+      hideBadgeRow: true
       description: TSPI health analysis for patients and treatment-plan drafting for clinicians
       default: true
       mcpServers:
