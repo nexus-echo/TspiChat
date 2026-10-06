@@ -657,7 +657,8 @@ export const registry: SettingEntry[] = [
     section: 'apiKeys',
     labelKey: 'com_ui_settings_label_provider_api_keys',
     keywords: ['api', 'key', 'keys', 'provider', 'endpoint', 'credentials'],
-    show: (ctx) => ctx.hasUserProvidedEndpoints,
+    /** TSPI: the API Keys section is hidden for everyone. */
+    show: () => false,
     Component: ProviderKeys,
   },
   {
@@ -665,7 +666,7 @@ export const registry: SettingEntry[] = [
     tab: DATA,
     section: 'apiKeys',
     labelKey: 'com_ui_settings_label_agent_api_keys',
-    show: (ctx) => ctx.hasRemoteAgents,
+    show: () => false, // TSPI: API Keys section hidden
     Component: ApiKeys,
   },
   {
@@ -673,6 +674,7 @@ export const registry: SettingEntry[] = [
     tab: DATA,
     section: 'apiKeys',
     labelKey: 'com_ui_settings_label_revoke_keys',
+    show: () => false, // TSPI: API Keys section hidden
     Component: RevokeKeys,
   },
   // Langfuse

@@ -31,7 +31,8 @@ function HelpSubmenu({
   onShowShortcuts: () => void;
 }) {
   const localize = useLocalize();
-  const hasHelpFaq = !!helpAndFaqURL && helpAndFaqURL !== '/';
+  /** TSPI: "Help & FAQ" points at LibreChat's docs, so it is hidden for everyone. */
+  const hasHelpFaq = false;
   const hasTos = !!termsOfServiceURL;
   const hasPrivacy = !!privacyPolicyURL;
   const showLegalDivider = (hasHelpFaq || true) && (hasTos || hasPrivacy);
