@@ -117,7 +117,56 @@ const getOpenIdAuthorizationAudience = () =>
  * for consistency and explicit configuration control.
  * More info: https://github.com/panva/openid-client/pull/713
  */
+/**
+ * TSPI: WorkOS AuthKit's OIDC authorize endpoint ignores `screen_hint` and `prompt=create`, so it
+ * always opens the sign-in screen. AuthKit's own "Sign up" link reuses the same authorization
+ * session on `/sign-up`. Do that hop server-side: request the authorize URL without following the
+ * redirect, and when AuthKit answers with `/?authorization_session_id=...` on the issuer's host,
+ * send the browser to `/sign-up` with the same query instead. Returns null on anything unexpected,
+ * and the caller falls back to the normal sign-in redirect.
+ * @param {string} authorizeUrl
+ * @returns {Promise<string | null>}
+ */
+async function resolveAuthKitSignUpUrl(authorizeUrl) {
+  try {
+    const response = await fetch(authorizeUrl, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
+    });
+    const location = response.headers.get('location');
+    if (!location) {
+      return null;
+    }
+    const target = new URL(location, authorizeUrl);
+    if (
+      target.origin !== new URL(authorizeUrl).origin ||
+      target.pathname !== '/' ||
+      !target.searchParams.has('authorization_session_id')
+    ) {
+      return null;
+    }
+    target.pathname = '/sign-up';
+    return target.href;
+  } catch (err) {
+    logger.warn('[openidStrategy] Could not open the AuthKit sign-up screen, using sign-in', err);
+    return null;
+  }
+}
+
 class CustomOpenIDStrategy extends OpenIDStrategy {
+  /** TSPI: `/oauth/openid?screen_hint=sign-up` lands on the AuthKit sign-up form. */
+  authenticate(req, options) {
+    if (req?.query?.screen_hint === 'sign-up' && typeof this.redirect === 'function') {
+      const redirect = this.redirect;
+      this.redirect = (url, status) => {
+        resolveAuthKitSignUpUrl(url).then((signUpUrl) =>
+          redirect.call(this, signUpUrl ?? url, status),
+        );
+      };
+    }
+    return super.authenticate(req, options);
+  }
+
   currentUrl(req) {
     const hostAndProtocol = process.env.DOMAIN_SERVER;
     const url = new URL(`${hostAndProtocol}${req.originalUrl ?? req.url}`);
