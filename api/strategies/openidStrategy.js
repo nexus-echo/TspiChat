@@ -120,7 +120,13 @@ const getOpenIdAuthorizationAudience = () =>
 class CustomOpenIDStrategy extends OpenIDStrategy {
   currentUrl(req) {
     const hostAndProtocol = process.env.DOMAIN_SERVER;
-    return new URL(`${hostAndProtocol}${req.originalUrl ?? req.url}`);
+    const url = new URL(`${hostAndProtocol}${req.originalUrl ?? req.url}`);
+    /** TSPI: openid-client starts a new login only when the URL has no query params; any other
+     *  query is treated as a provider callback. Drop `screen_hint` so `/oauth/openid?screen_hint=sign-up`
+     *  starts the sign-up redirect instead of failing as a code exchange. It is still read from
+     *  `req.query` in authorizationRequestParams below. */
+    url.searchParams.delete('screen_hint');
+    return url;
   }
 
   authorizationRequestParams(req, options) {

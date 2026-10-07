@@ -137,6 +137,9 @@ endpoints:
         # Health data: only route to OpenRouter providers that do not store or train on prompts.
         provider:
           data_collection: deny
+          # Only route to hosts that accept every parameter we send (tools, tool_choice). Without
+          # this, OpenRouter may pick a host with partial tool support and tool calls fail.
+          require_parameters: true
 
 modelSpecs:
   enforce: true
