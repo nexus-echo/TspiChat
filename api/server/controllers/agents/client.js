@@ -411,6 +411,33 @@ function getUserFacingRequestError(baseMessage, error, appConfig) {
   return `${baseMessage}: ${message}`;
 }
 
+/** Matches TSPI case ids such as TSPI-261008-0209-01. */
+const TSPI_CASE_ID_REGEX = /\bTSPI-\d{6}-\d{4}-[A-Z0-9]{2}\b/;
+
+/**
+ * Finds the first TSPI case id in the assistant's reply (preferred) or the user's text.
+ * @param {Array<object>} [contentParts]
+ * @param {string} [inputText]
+ * @returns {string | undefined}
+ */
+function extractTspiCaseId(contentParts, inputText) {
+  const texts = [];
+  for (const part of contentParts ?? []) {
+    if (part?.type !== 'text' || part.text == null) {
+      continue;
+    }
+    texts.push(typeof part.text === 'string' ? part.text : (part.text.value ?? ''));
+  }
+  texts.push(inputText ?? '');
+  for (const t of texts) {
+    const match = TSPI_CASE_ID_REGEX.exec(t);
+    if (match) {
+      return match[0];
+    }
+  }
+  return undefined;
+}
+
 class AgentClient extends BaseClient {
   getModelBoundAttachmentsForEndpoint(attachments) {
     return filterFilesByEndpointRuntimeConfig(this.options.req.config, {
@@ -5889,6 +5916,13 @@ class AgentClient extends BaseClient {
         `[api/server/controllers/agents/client.js #titleConvo] Skipping title generation for temporary conversation`,
       );
       return;
+    }
+
+    /** TSPI: if the reply already contains a case id (TSPI-YYMMDD-HHMM-XX), use it
+     *  as the conversation title directly instead of asking the title model. */
+    const tspiCaseId = extractTspiCaseId(this.contentParts, text);
+    if (tspiCaseId) {
+      return tspiCaseId;
     }
 
     const appConfig = req.config;
