@@ -869,6 +869,16 @@ export const getSharedFileDownload = async (
   });
 };
 
+/** Treatment-plan PDF built server-side from TSPI Brain output for the signed-in user. */
+export const getTspiReportPdf = async (reportId: string): Promise<AxiosResponse<Blob>> => {
+  return request.getResponse(endpoints.tspiReportPdf(reportId), {
+    responseType: 'blob',
+    headers: {
+      Accept: 'application/pdf',
+    },
+  });
+};
+
 export const getCodeOutputDownload = async (url: string): Promise<AxiosResponse> => {
   return request.getResponse(url, {
     responseType: 'blob',

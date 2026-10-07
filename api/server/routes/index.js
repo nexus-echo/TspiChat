@@ -21,6 +21,7 @@ const projects = require('./projects');
 const prompts = require('./prompts');
 const schedules = require('./schedules');
 const skills = require('./skills');
+const tspi = require('./tspi');
 const balance = require('./balance');
 const actions = require('./actions');
 const apiKeys = require('./apiKeys');
@@ -76,6 +77,7 @@ module.exports = {
   projects,
   schedules,
   skills,
+  tspi,
   actions,
   presets,
   balance,

@@ -79,6 +79,8 @@ export * from './schedules';
 export * from './schedules/service';
 export * from './skills';
 export * from './favorites';
+/* TSPI */
+export * from './tspi';
 /* User */
 export * from './user';
 /* Agent Plugins */

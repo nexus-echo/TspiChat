@@ -3,8 +3,7 @@ import { Button } from '@librechat/client';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UIResource } from 'librechat-data-provider';
 import UIResourceRenderer, { isSupportedUIResource } from '~/components/MCPUIResource/Renderer';
-import { useOptionalMessagesOperations } from '~/Providers';
-import { handleUIAction } from '~/utils';
+import { useMCPUIAction } from '~/hooks/MCP/useMCPUIAction';
 import { useLocalize } from '~/hooks';
 
 interface UIResourceCarouselProps {
@@ -17,7 +16,7 @@ const UIResourceCarousel: React.FC<UIResourceCarouselProps> = React.memo(({ uiRe
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [isContainerHovered, setIsContainerHovered] = useState(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const { ask } = useOptionalMessagesOperations();
+  const onUIAction = useMCPUIAction();
   const supportedUIResources = React.useMemo(
     () => uiResources.filter(isSupportedUIResource),
     [uiResources],
@@ -63,7 +62,7 @@ const UIResourceCarousel: React.FC<UIResourceCarouselProps> = React.memo(({ uiRe
     return (
       <UIResourceRenderer
         resource={supportedUIResources[0]}
-        onUIAction={async (result) => handleUIAction(result, ask)}
+        onUIAction={onUIAction}
         htmlProps={{
           autoResizeIframe: { width: true, height: true },
         }}
@@ -124,7 +123,7 @@ const UIResourceCarousel: React.FC<UIResourceCarouselProps> = React.memo(({ uiRe
               <div className="flex h-full flex-col">
                 <UIResourceRenderer
                   resource={uiResource}
-                  onUIAction={async (result) => handleUIAction(result, ask)}
+                  onUIAction={onUIAction}
                   htmlProps={{
                     autoResizeIframe: { width: true, height: true },
                   }}

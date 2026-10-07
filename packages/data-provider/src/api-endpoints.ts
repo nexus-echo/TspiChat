@@ -437,6 +437,9 @@ export const schedule = (id: string) => `${schedules()}/${encodeURIComponent(id)
 export const runSchedule = (id: string) => `${schedule(id)}/run`;
 
 /* Skills */
+export const tspiReportPdf = (reportId: string) =>
+  `${BASE_URL}/api/tspi/reports/${encodeURIComponent(reportId)}/pdf`;
+
 export const skills = () => `${BASE_URL}/api/skills`;
 export const importSkill = () => `${skills()}/import`;
 

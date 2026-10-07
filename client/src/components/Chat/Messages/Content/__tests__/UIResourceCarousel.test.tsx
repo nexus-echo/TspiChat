@@ -13,6 +13,7 @@ jest.mock(
       size: _size,
       ...props
     }: ComponentProps<'button'> & { variant?: string; size?: string }) => <button {...props} />,
+    useToastContext: () => ({ showToast: jest.fn() }),
   }),
   { virtual: true },
 );

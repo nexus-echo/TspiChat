@@ -321,15 +321,19 @@ items the clinician has not acknowledged.
 
 ## J. PDF
 
-On **Download PDF**, call `get_treatment_plan_mcp_tspi` for the report id, then build the PDF with
-the code tool and `reportlab`, following `references/pdf-template.md`.
+The app builds the PDF itself, straight from TSPI Brain: the **Download PDF** button on the report
+panel downloads `TSPI_<case code>_<report id>_<DRAFT|APPROVED>.pdf` without a message to you. Never
+write PDF code, never paste the full report as a substitute, and never tell the user to print the
+page.
 
-- Not approved (clinician): diagonal watermark **DRAFT – NOT FOR PATIENT USE** on every page.
-- Patient: watermark **UNREVIEWED AI DRAFT – NOT MEDICAL ADVICE**, status line "Not reviewed by
-  a TSPI doctor", and the first page repeats the patient banner and contact link.
-- Approved: approver and approval time exactly as returned by the engine.
-- The PDF carries the case code only, never the patient label or any identifier.
-- File name: `TSPI_<case code>_<report id>_<DRAFT|APPROVED>.pdf`.
+If the user asks for the PDF in a message: reply in one line, "Press **Download PDF** on the report
+panel below", and place the latest report panel's `\ui{<id>}` marker at the end of your reply. Do not
+call `get_treatment_plan_mcp_tspi` just for a PDF. If this conversation has no report panel yet, say
+the Download PDF button appears with the generated report.
+
+The PDF follows `references/pdf-template.md` (watermarks, approval line, case code only).
+
+---
 
 ## K. Follow-up outcomes (clinician only)
 
@@ -349,7 +353,8 @@ PDF**, and **Approve** (clinicians and reviewers only, drafts only, with a confi
 - A message saying the user clicked a button is a real request from the signed-in user:
   - "Start a new TSPI analysis" → section B (new patient label, new case code, empty intake).
   - "Generate the TSPI report for case ..." → section F (generate) with the current case.
-  - "Create and give me the PDF for report ..." → section J.
+  - "Create and give me the PDF for report ..." → normally downloaded by the app without reaching
+    you; if it does reach you, follow section J.
   - "Approve report ... (confirmed with the Approve button)" → section I.
 - Never offer or simulate an Approve button for a patient, even in text.
 

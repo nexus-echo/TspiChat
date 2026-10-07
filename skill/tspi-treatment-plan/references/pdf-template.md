@@ -1,4 +1,7 @@
-# TSPI treatment-plan PDF template (reportlab)
+# TSPI treatment-plan PDF template
+
+Implemented server-side in `packages/api/src/tspi/pdf.ts` (GET /api/tspi/reports/:id/pdf); this file
+is the reference for that renderer, not instructions to build a PDF in the chat.
 
 Style follows the TSPI brand (tspi-main.vercel.app / tspi_ui):
 

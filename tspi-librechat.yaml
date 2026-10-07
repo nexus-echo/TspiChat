@@ -205,3 +205,5 @@ modelSpecs:
           - Keep case details out of web searches; search only for general medical literature.
           - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your
             reply. A button click arrives as a user message: carry it out (see the skill).
+          - PDFs: the Download PDF button on the report panel downloads the PDF directly. Never write
+            PDF code or ask users to print; if asked for a PDF, point to that button (skill section J).
