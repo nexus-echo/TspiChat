@@ -196,6 +196,8 @@ const extractDocumentText = async (
           mimetype: canonicalMime,
           originalname: path.basename(name),
         } as Express.Multer.File,
+        /* Code artifacts are parsed under an 8s budget; scanned-page OCR cannot fit in it. */
+        visionOcr: false,
       }),
       DOCUMENT_PARSE_TIMEOUT_MS,
       `parseDocument exceeded ${DOCUMENT_PARSE_TIMEOUT_MS}ms`,

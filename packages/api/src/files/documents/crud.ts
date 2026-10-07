@@ -3,9 +3,16 @@ import yauzl from 'yauzl';
 import { megabyte, excelMimeTypes, FileSources } from 'librechat-data-provider';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import type { MistralOCRUploadResult } from '~/types';
+import type { RenderablePdf } from './visionOcr';
+import { getVisionOcrConfig, needsVisionOcr, ocrScannedPdfPages } from './visionOcr';
 import { assertSafeZipSize } from './zipSafety';
 
-type FileParseFn = (file: Express.Multer.File) => Promise<string>;
+type FileParseFn = (file: Express.Multer.File, options: ParseOptions) => Promise<string>;
+
+interface ParseOptions {
+  /** Transcribe image-only PDF pages with the vision OCR model when it is configured. */
+  visionOcr: boolean;
+}
 
 const DOCUMENT_PARSER_MAX_FILE_SIZE = 15 * megabyte;
 const ODT_MAX_DECOMPRESSED_SIZE = 50 * megabyte;
@@ -18,8 +25,11 @@ const ODT_MAX_DECOMPRESSED_SIZE = 50 * megabyte;
  */
 export async function parseDocument({
   file,
+  visionOcr = true,
 }: {
   file: Express.Multer.File;
+  /** Set false on latency-bound paths: OCR of scanned pages takes seconds per page. */
+  visionOcr?: boolean;
 }): Promise<MistralOCRUploadResult> {
   const parseFn = getParserForMimeType(file.mimetype);
   if (!parseFn) {
@@ -35,7 +45,7 @@ export async function parseDocument({
     );
   }
 
-  const text = await parseFn(file);
+  const text = await parseFn(file, { visionOcr });
 
   if (!text?.trim()) {
     throw new Error('No text found in document');
@@ -70,26 +80,48 @@ function getParserForMimeType(mimetype: string): FileParseFn | undefined {
   return undefined;
 }
 
-/** Parses PDF, returns text inside. */
-async function pdfToText(file: Express.Multer.File): Promise<string> {
+/**
+ * Parses PDF, returns text inside. Image-only (scanned) pages have no embedded text; when vision
+ * OCR is configured (see `./visionOcr`) those pages are rendered and transcribed instead.
+ */
+async function pdfToText(file: Express.Multer.File, options: ParseOptions): Promise<string> {
   // Imported inline so that Jest can test other routes without failing due to loading ESM
   const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   const data = new Uint8Array(await fs.promises.readFile(file.path));
   const pdf = await getDocument({ data }).promise;
 
-  let fullText = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .filter((item): item is TextItem => !('type' in item))
-      .map((item) => item.str)
-      .join(' ');
-    fullText += pageText + '\n';
-  }
+  try {
+    const pages: string[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .filter((item): item is TextItem => !('type' in item))
+        .map((item) => item.str)
+        .join(' ');
+      pages.push(pageText);
+    }
 
-  return fullText;
+    const ocrConfig = options.visionOcr ? getVisionOcrConfig() : null;
+    const scannedPages = ocrConfig
+      ? pages.flatMap((text, index) => (needsVisionOcr(text) ? [index + 1] : []))
+      : [];
+    if (ocrConfig && scannedPages.length > 0) {
+      const transcribed = await ocrScannedPdfPages({
+        pdf: pdf as unknown as RenderablePdf,
+        pageNumbers: scannedPages,
+        config: ocrConfig,
+      });
+      for (const [pageNumber, text] of transcribed) {
+        pages[pageNumber - 1] = text;
+      }
+    }
+
+    return pages.map((pageText) => pageText + '\n').join('');
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 /** Parses Word document, returns text inside. */

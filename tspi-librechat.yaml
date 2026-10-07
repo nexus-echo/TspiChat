@@ -64,8 +64,8 @@ memory:
   disabled: false
   personalize: true
   agent:
-    provider: DeepSeek # staging; production: anthropic / claude-haiku-4-5-20251001
-    model: deepseek-flash
+    provider: OpenRouter # staging; production: anthropic / claude-haiku-4-5-20251001
+    model: google/gemma-4-26b-a4b-it
     instructions: |
       Save only the user's working preferences (language, report style, units, how they like
       answers formatted). Never save patient or case details: no symptoms, labs, diagnoses,
@@ -103,19 +103,35 @@ endpoints:
       - claude-haiku-4-5-20251001
     titleConvo: true
     titleModel: claude-haiku-4-5-20251001
-  # Staging model: DeepSeek (OpenAI-compatible API). Key stays server-side in DEEPSEEK_API_KEY.
+  # Staging model: Gemma 4 26B A4B through OpenRouter (OpenAI-compatible API).
+  # Key stays server-side in OPENROUTER_KEY.
   custom:
-    - name: DeepSeek
-      apiKey: '${DEEPSEEK_API_KEY}'
-      baseURL: 'https://api.deepseek.com/v1'
+    - name: OpenRouter
+      apiKey: '${OPENROUTER_KEY}'
+      baseURL: 'https://openrouter.ai/api/v1'
       models:
         default:
-          - deepseek-v4-pro
-          - deepseek-flash
+          - google/gemma-4-26b-a4b-it
         fetch: false
       titleConvo: true
-      titleModel: deepseek-flash
-      modelDisplayLabel: DeepSeek
+      titleModel: google/gemma-4-26b-a4b-it
+      modelDisplayLabel: OpenRouter
+      # OpenRouter models use different stop tokens; LibreChat's default stop list breaks some of them.
+      dropParams: ['stop']
+      addParams:
+        # PDFs sent with "Upload to Provider" are parsed by OpenRouter before the model sees them.
+        # cloudflare-ai is free and reads text PDFs; it is not documented to OCR scanned pages.
+        # Pinned so OpenRouter never falls back to paid mistral-ocr (its default for Gemma, which has
+        # no native PDF input). Scanned PDFs: use "Upload as Text"; the built-in parser sends
+        # image-only pages to Gemma for OCR (PDF_VISION_OCR_* in .env, see .env.tspi.example).
+        # To restore OCR of scanned PDFs (~$2 per 1,000 pages), set engine: mistral-ocr.
+        plugins:
+          - id: file-parser
+            pdf:
+              engine: cloudflare-ai
+        # Health data: only route to OpenRouter providers that do not store or train on prompts.
+        provider:
+          data_collection: deny
 
 modelSpecs:
   enforce: true
@@ -144,8 +160,8 @@ modelSpecs:
         - Upload my lab report
         - Open a previous report
       preset:
-        endpoint: DeepSeek # staging; production: anthropic / claude-sonnet-5-5
-        model: deepseek-v4-pro
+        endpoint: OpenRouter # staging; production: anthropic / claude-sonnet-5-5
+        model: google/gemma-4-26b-a4b-it
         promptPrefix: |
           You are TSPI Digital Twin, an assistant for the TSPI AI Brain. Follow the tspi-treatment-plan skill.
           - TSPI tool names in this app end in _mcp_tspi: whoami_mcp_tspi, engine_health_mcp_tspi,
