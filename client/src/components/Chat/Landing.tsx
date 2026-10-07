@@ -140,9 +140,13 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     return margin;
   }, [lineCount, description, textHasMultipleLines, contentHeight]);
 
+  /** Without a name, drop the placeholder and the space/punctuation it leaves ("Hi , welcome"). */
   const resolvedWelcome =
-    customWelcome != null && user?.name
-      ? customWelcome.replace(/{{user.name}}/g, user.name)
+    customWelcome != null
+      ? customWelcome
+          .replace(/{{\s*user\.name\s*}}/g, user?.name?.trim() ?? '')
+          .replace(/\s+([,.!?])/g, '$1')
+          .replace(/^[\s,]+/, '')
       : customWelcome;
 
   const greetingText = isTemporary

@@ -193,6 +193,9 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
                         )}
                       >
                         {isLandingPage && <ConversationStarters />}
+                        {!isLandingPage && !isSubagentThreadReadOnly && (
+                          <ConversationStarters variant="inline" />
+                        )}
                         {isSubagentThreadReadOnly ? (
                           <div
                             className="mx-auto w-full max-w-3xl px-4 py-3 text-center text-sm text-text-secondary xl:max-w-4xl"

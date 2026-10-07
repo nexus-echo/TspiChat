@@ -14,8 +14,7 @@ interface:
   # deliberately NOT set here: anything set here is re-applied to BOTH the USER and ADMIN roles on
   # every restart, which would also lock admins out. They are set per role instead, see
   # docs/tspi-day2-roles.md (USER = clinician view, ADMIN = everything).
-  # {{user.name}} is the signed-in user's name (left out cleanly when the account has no name).
-  customWelcome: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Upload a lab report or describe symptoms to start a TSPI health analysis.'
+  customWelcome: 'Welcome to TSPI Digital Twin. Describe symptoms and labs, or upload a lab report, to get a TSPI health analysis. Never enter names or other identifiers.'
   modelSelect: false
   parameters: false
   presets: false
@@ -65,8 +64,8 @@ memory:
   disabled: false
   personalize: true
   agent:
-    provider: OpenRouter # staging; production: anthropic / claude-haiku-4-5-20251001
-    model: google/gemma-4-26b-a4b-it
+    provider: DeepSeek # staging; production: anthropic / claude-haiku-4-5-20251001
+    model: deepseek-flash
     instructions: |
       Save only the user's working preferences (language, report style, units, how they like
       answers formatted). Never save patient or case details: no symptoms, labs, diagnoses,
@@ -86,11 +85,7 @@ mcpServers:
     headers:
       # Each clinician's own WorkOS access token (requires OPENID_REUSE_TOKENS=true).
       Authorization: 'Bearer {{LIBRECHAT_OPENID_ACCESS_TOKEN}}'
-    # Off on purpose: the tspi-treatment-plan skill carries every server rule (de-identified case,
-    # red flags first, draft-until-approved, patient banner, \ui markers) plus this app's own
-    # policy (patient label kept in the chat only, generated case codes). Pulling both in gives a
-    # small model two conflicting instructions about patient names.
-    serverInstructions: false
+    serverInstructions: true # pulls the server's de-identification rules into the prompt
     chatMenu: false # clinicians cannot switch it off
     startup: false # no app-level connection: every connection is per user, with their token
     timeout: 120000
@@ -108,35 +103,19 @@ endpoints:
       - claude-haiku-4-5-20251001
     titleConvo: true
     titleModel: claude-haiku-4-5-20251001
-  # Staging model: Gemma 4 26B A4B through OpenRouter (OpenAI-compatible API).
-  # Key stays server-side in OPENROUTER_KEY.
+  # Staging model: DeepSeek (OpenAI-compatible API). Key stays server-side in DEEPSEEK_API_KEY.
   custom:
-    - name: OpenRouter
-      apiKey: '${OPENROUTER_KEY}'
-      baseURL: 'https://openrouter.ai/api/v1'
+    - name: DeepSeek
+      apiKey: '${DEEPSEEK_API_KEY}'
+      baseURL: 'https://api.deepseek.com/v1'
       models:
         default:
-          - google/gemma-4-26b-a4b-it
+          - deepseek-v4-pro
+          - deepseek-flash
         fetch: false
       titleConvo: true
-      titleModel: google/gemma-4-26b-a4b-it
-      modelDisplayLabel: OpenRouter
-      # OpenRouter models use different stop tokens; LibreChat's default stop list breaks some of them.
-      dropParams: ['stop']
-      addParams:
-        # PDFs sent with "Upload to Provider" are parsed by OpenRouter before the model sees them.
-        # cloudflare-ai is free and reads text PDFs; it is not documented to OCR scanned pages.
-        # Pinned so OpenRouter never falls back to paid mistral-ocr (its default for Gemma, which has
-        # no native PDF input). Scanned PDFs: use "Upload as Text"; the built-in parser sends
-        # image-only pages to Gemma for OCR (PDF_VISION_OCR_* in .env, see .env.tspi.example).
-        # To restore OCR of scanned PDFs (~$2 per 1,000 pages), set engine: mistral-ocr.
-        plugins:
-          - id: file-parser
-            pdf:
-              engine: cloudflare-ai
-        # Health data: only route to OpenRouter providers that do not store or train on prompts.
-        provider:
-          data_collection: deny
+      titleModel: deepseek-flash
+      modelDisplayLabel: DeepSeek
 
 modelSpecs:
   enforce: true
@@ -160,33 +139,28 @@ modelSpecs:
       executeCode: true
       skills:
         - tspi-treatment-plan
-      # The first starter is also shown above the chat box in every conversation (opens a new chat).
       conversation_starters:
         - Start a new TSPI analysis
+        - Upload my lab report
+        - Open a previous report
       preset:
-        endpoint: OpenRouter # staging; production: anthropic / claude-sonnet-5-5
-        model: google/gemma-4-26b-a4b-it
+        endpoint: DeepSeek # staging; production: anthropic / claude-sonnet-5-5
+        model: deepseek-v4-pro
         promptPrefix: |
-          You are TSPI Digital Twin, an assistant for the TSPI AI Brain. Follow the tspi-treatment-plan skill exactly.
-          Current date and time: {{current_datetime}}. Signed-in user: {{current_user}}.
+          You are TSPI Digital Twin, an assistant for the TSPI AI Brain. Follow the tspi-treatment-plan skill.
           - TSPI tool names in this app end in _mcp_tspi: whoami_mcp_tspi, engine_health_mcp_tspi,
             screen_red_flags_mcp_tspi, analyze_case_mcp_tspi, generate_treatment_plan_mcp_tspi,
             get_treatment_plan_mcp_tspi, approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi,
-            record_outcome_mcp_tspi. If any instructions say tspi_<name>, call <name>_mcp_tspi.
+            record_outcome_mcp_tspi. If the TSPI server instructions say tspi_<name>, call <name>_mcp_tspi.
             Only call names that are in your tool list; never guess or rename one.
-          - Connection check: at the start of every conversation call whoami_mcp_tspi. If it is missing
-            or fails, show the matching message from the skill (not connected, session expired, or
-            temporarily unavailable) and stop. Never show raw errors, tokens or JSON.
-          - Role clinician or reviewer: clinician workflow. Role patient: patient workflow. Any other
-            role: say there is no clinical access for this account and point to
-            https://tspi-main.vercel.app/contact.
-          - Never ask the user for a case id. Generate one per new analysis: TSPI-YYMMDD-HHMM-XX from the
-            current date and time above. A clinician may give a patient name or nickname as a label;
-            keep it in this chat only. Never put any name, date of birth, MRN, phone, email or address
-            into a tool call, a PDF or a web search.
-          - Do not ask users to type lab values or units. Ask them to upload the lab report, extract the
-            results yourself, show them back as a table and ask for one confirmation (data + consent).
-          - "Start a new TSPI analysis" means a new patient: forget every detail of any earlier case.
+          - If a TSPI tool returns "not found" or another error, do not retry it more than once. Tell the
+            user TSPI Brain is unavailable right now, ask them to try again shortly, and stop.
+          - At the start of every conversation call whoami_mcp_tspi. Role clinician or reviewer: use the
+            clinician workflow. Role patient: use the patient workflow. Any other role: say there is no
+            clinical access for this account and point to https://tspi-main.vercel.app/contact.
+          - Collect only de-identified data: an age band, sex, symptoms, labs with units, medications
+            and conditions. Never ask for or submit a name, date of birth, MRN, phone, email or
+            address. If one is typed or appears in an upload, do not repeat it and leave it out.
           - For a new case, always run screen_red_flags_mcp_tspi first. Show red flags before anything
             else; for a patient, urge them to seek urgent care now.
           - The TSPI engine is the only source of clinical conclusions. Present its output as-is and
