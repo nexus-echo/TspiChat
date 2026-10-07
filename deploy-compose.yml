@@ -4,7 +4,7 @@ services:
     #   context: .
     #   dockerfile: Dockerfile.multi
     #   target: api-build
-    image: ghcr.io/nexus-echo/tspichat-api:3a423601fb5245c1d220621df6ab9a8ce20b3bfc
+    image: ghcr.io/nexus-echo/tspichat-api:60dd5b5dd3b170aaad85722434daa4954a4603c3
     container_name: LibreChat-API
     ports:
       - 3080:3080
