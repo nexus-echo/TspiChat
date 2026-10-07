@@ -21,8 +21,8 @@ describe('rum diagnostics', () => {
     jest.clearAllMocks();
     testExports.resetDiagnosticsState();
     window.history.replaceState({}, '', '/c/65a5e0a7d1c2b3a4f5e6d789?token=secret#hash');
-    window.__lcRumQueue = undefined;
-    window.__lcRumPush = undefined;
+    window.__tspiRumQueue = undefined;
+    window.__tspiRumPush = undefined;
     sessionStorage.clear();
     jest.spyOn(performance, 'now').mockReturnValue(1234.4);
   });
@@ -32,7 +32,7 @@ describe('rum diagnostics', () => {
   });
 
   it('flushes early queued lifecycle events once', () => {
-    window.__lcRumQueue = [
+    window.__tspiRumQueue = [
       {
         type: 'sw-controller',
         at: 2.2,
@@ -56,15 +56,15 @@ describe('rum diagnostics', () => {
       scriptPath: '/service-worker.js',
       fullPath: '/c/:conversationId',
     });
-    expect(window.__lcRumQueue).toEqual([]);
+    expect(window.__tspiRumQueue).toEqual([]);
   });
 
   it('routes SPA changes through the early RUM queue', () => {
-    window.__lcRumPush = jest.fn();
+    window.__tspiRumPush = jest.fn();
 
     queueSpaRouteChange('/login', '/c/65a5e0a7d1c2b3a4f5e6d789');
 
-    expect(window.__lcRumPush).toHaveBeenCalledWith('spa-route-change', {
+    expect(window.__tspiRumPush).toHaveBeenCalledWith('spa-route-change', {
       fromPath: '/login',
       toPath: '/c/:conversationId',
       pageElapsedMs: 1234,
@@ -72,7 +72,7 @@ describe('rum diagnostics', () => {
   });
 
   it('emits queued SPA route changes without an early prefix', () => {
-    window.__lcRumQueue = [
+    window.__tspiRumQueue = [
       {
         type: 'spa-route-change',
         at: 1234.4,
@@ -102,7 +102,7 @@ describe('rum diagnostics', () => {
 
     flushEarlyRumQueue({ addAction: throwingAddAction });
 
-    expect(() => window.__lcRumPush?.('stale-asset-recovery-start')).not.toThrow();
+    expect(() => window.__tspiRumPush?.('stale-asset-recovery-start')).not.toThrow();
     expect(throwingAddAction).toHaveBeenCalledWith(
       'early-stale-asset-recovery-start',
       expect.any(Object),
@@ -110,28 +110,28 @@ describe('rum diagnostics', () => {
   });
 
   it('discards persisted early RUM when the page is not sampled', () => {
-    window.__lcRumQueue = [
+    window.__tspiRumQueue = [
       {
         type: 'asset-load-error',
         attributes: { tagName: 'SCRIPT' },
       },
     ];
-    window.__lcRumPush = jest.fn();
-    sessionStorage.setItem('lc-rum-queue', JSON.stringify(window.__lcRumQueue));
+    window.__tspiRumPush = jest.fn();
+    sessionStorage.setItem('tspi-rum-queue', JSON.stringify(window.__tspiRumQueue));
 
     discardEarlyRumQueue();
-    window.__lcRumPush?.('spa-route-change', { fromPath: '/login', toPath: '/c/new' });
+    window.__tspiRumPush?.('spa-route-change', { fromPath: '/login', toPath: '/c/new' });
 
-    expect(window.__lcRumQueue).toEqual([]);
-    expect(sessionStorage.getItem('lc-rum-queue')).toBeNull();
+    expect(window.__tspiRumQueue).toEqual([]);
+    expect(sessionStorage.getItem('tspi-rum-queue')).toBeNull();
   });
 
   it('restores the HyperDX-backed emitter after the early queue was discarded', () => {
-    window.__lcRumQueue = [];
+    window.__tspiRumQueue = [];
     discardEarlyRumQueue();
 
     restoreRumEmitter({ addAction });
-    window.__lcRumPush?.('spa-route-change', { fromPath: '/login', toPath: '/c/new' });
+    window.__tspiRumPush?.('spa-route-change', { fromPath: '/login', toPath: '/c/new' });
 
     expect(addAction).toHaveBeenCalledWith(
       'spa-route-change',

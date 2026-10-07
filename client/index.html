@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="TSPI Digital - clinical assistant for TSPI Brain treatment planning"
+      content="TSPI Digital Twin - clinical assistant for TSPI Brain treatment planning"
     />
-    <title>TSPI Digital</title>
+    <title>TSPI Digital Twin</title>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="assets/apple-touch-icon-180x180.png" />
@@ -76,20 +76,20 @@
     </script>
     <script>
       (function () {
-        var KEY = 'lc-asset-recovery-at';
-        var RUM_QUEUE_KEY = 'lc-rum-queue';
+        var KEY = 'tspi-asset-recovery-at';
+        var RUM_QUEUE_KEY = 'tspi-rum-queue';
         var MAX_RUM_QUEUE = 20;
-        window.__lcRumRecoveryGuardInstalled = true;
-        window.__lcRumQueue = Array.isArray(window.__lcRumQueue) ? window.__lcRumQueue : [];
+        window.__tspiRumRecoveryGuardInstalled = true;
+        window.__tspiRumQueue = Array.isArray(window.__tspiRumQueue) ? window.__tspiRumQueue : [];
         try {
           var persistedQueue = JSON.parse(sessionStorage.getItem(RUM_QUEUE_KEY) || '[]');
           if (Array.isArray(persistedQueue)) {
-            window.__lcRumQueue = persistedQueue.concat(window.__lcRumQueue).slice(-MAX_RUM_QUEUE);
+            window.__tspiRumQueue = persistedQueue.concat(window.__tspiRumQueue).slice(-MAX_RUM_QUEUE);
           }
         } catch (e) {
           /* Diagnostics should never affect application startup. */
         }
-        window.__lcRumPush = function (type, attributes) {
+        window.__tspiRumPush = function (type, attributes) {
           try {
             var safeAttributes = {};
             Object.keys(attributes || {}).forEach(function (key) {
@@ -117,16 +117,16 @@
                 break;
               }
             }
-            if (window.__lcRumQueue.length >= MAX_RUM_QUEUE) {
-              window.__lcRumQueue.shift();
+            if (window.__tspiRumQueue.length >= MAX_RUM_QUEUE) {
+              window.__tspiRumQueue.shift();
             }
-            window.__lcRumQueue.push({
+            window.__tspiRumQueue.push({
               type: type,
               at: Math.round(performance.now()),
               visibilityState: document.visibilityState,
               attributes: safeAttributes,
             });
-            sessionStorage.setItem(RUM_QUEUE_KEY, JSON.stringify(window.__lcRumQueue));
+            sessionStorage.setItem(RUM_QUEUE_KEY, JSON.stringify(window.__tspiRumQueue));
           } catch (e) {
             /* Diagnostics should never affect application startup. */
           }
@@ -143,13 +143,13 @@
             return false;
           }
         }
-        window.__lcRecoverStaleAssets = function () {
+        window.__tspiRecoverStaleAssets = function () {
           if (!shouldRecover()) {
             return false;
           }
-          window.__lcRumPush('stale-asset-recovery-start');
+          window.__tspiRumPush('stale-asset-recovery-start');
           var reload = function () {
-            window.__lcRumPush('stale-asset-recovery-reload');
+            window.__tspiRumPush('stale-asset-recovery-reload');
             window.location.reload();
           };
           if (navigator.serviceWorker) {
@@ -175,12 +175,12 @@
         };
         if (navigator.serviceWorker) {
           navigator.serviceWorker.addEventListener('message', function (event) {
-            if (!event.data || event.data.type !== 'LC_SW_PING') {
+            if (!event.data || event.data.type !== 'TSPI_SW_PING') {
               return;
             }
             var source = event.source || navigator.serviceWorker.controller;
             if (source) {
-              source.postMessage({ type: 'LC_SW_PONG' });
+              source.postMessage({ type: 'TSPI_SW_PONG' });
             }
           });
         }
@@ -195,8 +195,8 @@
             var failedPreload =
               el.tagName === 'LINK' && /preload/.test(el.rel || '') && /\.js$/.test(el.href || '');
             if (failedScript || failedPreload) {
-              var isRumBootstrap = el.getAttribute('data-lc-rum-bootstrap') === 'true';
-              window.__lcRumPush('asset-load-error', {
+              var isRumBootstrap = el.getAttribute('data-tspi-rum-bootstrap') === 'true';
+              window.__tspiRumPush('asset-load-error', {
                 tagName: el.tagName,
                 assetUrl: el.src || el.href,
                 optional: isRumBootstrap,
@@ -204,7 +204,7 @@
               if (isRumBootstrap) {
                 return;
               }
-              window.__lcRecoverStaleAssets();
+              window.__tspiRecoverStaleAssets();
             }
           },
           true,
@@ -216,14 +216,14 @@
             (message.indexOf('dynamically imported module') !== -1 ||
               message.indexOf('Importing a module script failed') !== -1)
           ) {
-            window.__lcRumPush('dynamic-import-error');
-            window.__lcRecoverStaleAssets();
+            window.__tspiRumPush('dynamic-import-error');
+            window.__tspiRecoverStaleAssets();
           }
         });
       })();
     </script>
     <script
-      data-lc-rum-bootstrap="true"
+      data-tspi-rum-bootstrap="true"
       type="module"
       src="/src/lib/rum/bootstrap-entry.js"
     ></script>

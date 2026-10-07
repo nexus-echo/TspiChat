@@ -51,12 +51,12 @@ const URL_ATTRIBUTE_KEYS: Record<string, string> = {
   scriptUrl: 'scriptPath',
   toPath: 'toPath',
 };
-const EARLY_RUM_QUEUE_STORAGE_KEY = 'lc-rum-queue';
+const EARLY_RUM_QUEUE_STORAGE_KEY = 'tspi-rum-queue';
 
 declare global {
   interface Window {
-    __lcRumQueue?: RumQueuedEvent[];
-    __lcRumPush?: (type: string, attributes?: Record<string, unknown>) => void;
+    __tspiRumQueue?: RumQueuedEvent[];
+    __tspiRumPush?: (type: string, attributes?: Record<string, unknown>) => void;
   }
 }
 
@@ -168,7 +168,7 @@ export function flushEarlyRumQueue(HyperDX: HyperDXActionClient): void {
   }
 
   earlyQueueFlushed = true;
-  const queuedEvents = window.__lcRumQueue?.splice(0) ?? [];
+  const queuedEvents = window.__tspiRumQueue?.splice(0) ?? [];
   try {
     sessionStorage.removeItem(EARLY_RUM_QUEUE_STORAGE_KEY);
   } catch {
@@ -187,7 +187,7 @@ export function restoreRumEmitter(HyperDX: HyperDXActionClient): void {
 
 function installRumEmitter(HyperDX: HyperDXActionClient): void {
   const clientBuildId = getClientBuildId();
-  window.__lcRumPush = (type, attributes) => {
+  window.__tspiRumPush = (type, attributes) => {
     emitEarlyRumEvent(HyperDX, {
       type,
       at: performance.now(),
@@ -198,13 +198,13 @@ function installRumEmitter(HyperDX: HyperDXActionClient): void {
 }
 
 export function discardEarlyRumQueue(): void {
-  window.__lcRumQueue?.splice(0);
+  window.__tspiRumQueue?.splice(0);
   try {
     sessionStorage.removeItem(EARLY_RUM_QUEUE_STORAGE_KEY);
   } catch {
     /* Diagnostics should never affect app behavior. */
   }
-  window.__lcRumPush = () => undefined;
+  window.__tspiRumPush = () => undefined;
 }
 
 function emitEarlyRumEvent(HyperDX: HyperDXActionClient, event: RumQueuedEvent): void {
@@ -240,7 +240,7 @@ export function queueSpaRouteChange(
     return;
   }
 
-  window.__lcRumPush?.('spa-route-change', {
+  window.__tspiRumPush?.('spa-route-change', {
     fromPath: normalizedFromPath,
     toPath: normalizedToPath,
     pageElapsedMs: round(pageElapsedMs),

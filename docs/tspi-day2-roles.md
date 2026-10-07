@@ -1,4 +1,4 @@
-# TSPI Digital — Day 2 role setup
+# TSPI Digital Twin — Day 2 role setup
 
 LibreChat has two layers of "who sees what":
 
@@ -53,5 +53,5 @@ switched off for everyone in the yaml. To turn them back on for admins only:
 
 | Account | Expect |
 | --- | --- |
-| Clinician (e.g. daphal.chaitanya84@gmail.com) or patient | Sidebar: New chat, history, search, skills, scheduled chats, prompts, memories, bookmarks, files, account. No Agent Builder, no MCP Settings. Chat box: attach button only, no Tools button or tool chips. No model picker. TSPI Digital name and logo. Terms-of-use dialog on first login. |
+| Clinician (e.g. daphal.chaitanya84@gmail.com) or patient | Sidebar: New chat, history, search, skills, scheduled chats, prompts, memories, bookmarks, files, account. No Agent Builder, no MCP Settings. Chat box: attach button only, no Tools button or tool chips. No model picker. TSPI Digital Twin name and logo. Terms-of-use dialog on first login. |
 | Admin (chaitanya.daphal84@gmail.com) | Everything above plus Agent Builder, MCP Settings and the model picker. |

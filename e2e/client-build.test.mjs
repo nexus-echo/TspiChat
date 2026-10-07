@@ -47,12 +47,12 @@ test(
         await mkdir(fixture);
         await writeFile(
           path.join(fixture, 'index.html'),
-          `<html><head>${guards}<script data-lc-client-entry type="module" src="/entry.js"></script></head><body><input aria-label="Draft"></body></html>`,
+          `<html><head>${guards}<script data-tspi-client-entry type="module" src="/entry.js"></script></head><body><input aria-label="Draft"></body></html>`,
         );
         await writeFile(
           path.join(fixture, 'entry.js'),
           `import { installRumBootstrap } from ${JSON.stringify(path.join(root, 'client/src/lib/rum/bootstrap.js'))};
-         window.__lcRumPush('before-bootstrap');
+         window.__tspiRumPush('before-bootstrap');
          installRumBootstrap(window);
          window.fixtureVersion = ${JSON.stringify(version)};
          navigator.serviceWorker.register('/sw.js');`,
@@ -80,19 +80,19 @@ test(
       await page.evaluate(() => navigator.serviceWorker.ready);
       await page.waitForFunction(() => !!navigator.serviceWorker.controller);
       await page.getByLabel('Draft').fill('Keep my unsent text');
-      const firstId = await page.evaluate(() => window.__lcRumQueue[0].attributes.clientBuildId);
+      const firstId = await page.evaluate(() => window.__tspiRumQueue[0].attributes.clientBuildId);
       assert.match(firstId, /^index\..+\.js$/);
       assert.equal(
         await page.evaluate(
           () =>
-            window.__lcRumQueue.find((event) => event.type === 'before-bootstrap').attributes
+            window.__tspiRumQueue.find((event) => event.type === 'before-bootstrap').attributes
               .clientBuildId,
         ),
         firstId,
       );
 
       await page.evaluate(() => {
-        window.__lcRumQueue.length = 0;
+        window.__tspiRumQueue.length = 0;
       });
       serving = 'B';
       await page.evaluate(async () => {
@@ -100,15 +100,15 @@ test(
         await registration.update();
       });
       await page.waitForFunction(() =>
-        window.__lcRumQueue.some((event) => event.type === 'sw-ping'),
+        window.__tspiRumQueue.some((event) => event.type === 'sw-ping'),
       );
       // Outlive the worker's unresponsive-client deadline to catch an unwanted navigation.
       await page.waitForTimeout(2000);
       assert.equal(await page.getByLabel('Draft').inputValue(), 'Keep my unsent text');
       assert.equal(await page.evaluate(() => window.fixtureVersion), 'A');
-      await page.evaluate(() => window.__lcRumPush('after-update'));
+      await page.evaluate(() => window.__tspiRumPush('after-update'));
       assert.equal(
-        await page.evaluate(() => window.__lcRumQueue.at(-1).attributes.clientBuildId),
+        await page.evaluate(() => window.__tspiRumQueue.at(-1).attributes.clientBuildId),
         firstId,
       );
 
@@ -116,13 +116,13 @@ test(
       await page.waitForFunction(() => window.fixtureVersion === 'B');
       const nextId = await page.evaluate(
         () =>
-          window.__lcRumQueue.findLast((event) => event.type === 'inline-start').attributes
+          window.__tspiRumQueue.findLast((event) => event.type === 'inline-start').attributes
             .clientBuildId,
       );
       assert.equal(
         await page.evaluate(
           () =>
-            window.__lcRumQueue.find((event) => event.type === 'after-update').attributes
+            window.__tspiRumQueue.find((event) => event.type === 'after-update').attributes
               .clientBuildId,
         ),
         firstId,

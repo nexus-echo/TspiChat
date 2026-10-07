@@ -1,4 +1,4 @@
-# TSPI Digital — Day 1 runbook (access and model)
+# TSPI Digital Twin — Day 1 runbook (access and model)
 
 Goal for today: a clinician signs in to chat.tspipro.com once with WorkOS, and the TSPI MCP
 recognises them as themselves (Gate A: `tspi_whoami` returns each user's own identity).
@@ -19,7 +19,7 @@ recognises them as themselves (Gate A: `tspi_whoami` returns each user's own ide
 The MCP only accepts tokens whose audience is `https://mcp.tspipro.com/mcp` (the Claude connector
 asks WorkOS for exactly that). When LibreChat logs a user in, WorkOS issues a token whose audience
 is the **environment client ID** instead, so the MCP would answer 401. The patch accepts that
-audience **only** when the token's `client_id` is the TSPI Digital chat app.
+audience **only** when the token's `client_id` is the TSPI Digital Twin chat app.
 
 ## Step 1 — WorkOS (project TSPI_MCP, Staging environment) — checked 30 Sep via the WorkOS MCP
 

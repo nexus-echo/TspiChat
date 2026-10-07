@@ -1,6 +1,6 @@
 import { getClientBuildId } from './build';
 
-const RUM_QUEUE_KEY = 'lc-rum-queue';
+const RUM_QUEUE_KEY = 'tspi-rum-queue';
 const MAX_RUM_QUEUE = 20;
 
 function safeNow(targetWindow) {
@@ -32,18 +32,18 @@ export function installRumBootstrap(targetWindow) {
     targetSessionStorage = undefined;
   }
 
-  targetWindow.__lcRumQueue = Array.isArray(targetWindow.__lcRumQueue)
-    ? targetWindow.__lcRumQueue
+  targetWindow.__tspiRumQueue = Array.isArray(targetWindow.__tspiRumQueue)
+    ? targetWindow.__tspiRumQueue
     : [];
 
   function enqueueRumEvent(event, shouldPersist) {
-    if (targetWindow.__lcRumQueue.length >= MAX_RUM_QUEUE) {
-      const replaceIndex = targetWindow.__lcRumQueue.findIndex(
+    if (targetWindow.__tspiRumQueue.length >= MAX_RUM_QUEUE) {
+      const replaceIndex = targetWindow.__tspiRumQueue.findIndex(
         (queuedEvent) => queuedEvent && queuedEvent.type === 'visibility-change',
       );
-      targetWindow.__lcRumQueue.splice(replaceIndex === -1 ? 0 : replaceIndex, 1);
+      targetWindow.__tspiRumQueue.splice(replaceIndex === -1 ? 0 : replaceIndex, 1);
     }
-    targetWindow.__lcRumQueue.push(event);
+    targetWindow.__tspiRumQueue.push(event);
     if (shouldPersist !== false) {
       persistRumQueue();
     }
@@ -70,13 +70,13 @@ export function installRumBootstrap(targetWindow) {
       if (!targetSessionStorage) {
         throw new Error('sessionStorage unavailable');
       }
-      targetSessionStorage.setItem(RUM_QUEUE_KEY, JSON.stringify(targetWindow.__lcRumQueue));
+      targetSessionStorage.setItem(RUM_QUEUE_KEY, JSON.stringify(targetWindow.__tspiRumQueue));
     } catch {
       recordRumQueueStorageError('persist');
     }
   }
 
-  targetWindow.__lcRumPush = function (type, attributes) {
+  targetWindow.__tspiRumPush = function (type, attributes) {
     try {
       enqueueRumEvent({
         type,
@@ -89,7 +89,7 @@ export function installRumBootstrap(targetWindow) {
     }
   };
 
-  targetWindow.__lcRumPush('inline-start', {
+  targetWindow.__tspiRumPush('inline-start', {
     prerendering: targetDocument.prerendering === true,
     currentPath: targetWindow.location.pathname,
   });
@@ -97,49 +97,49 @@ export function installRumBootstrap(targetWindow) {
   targetDocument.addEventListener(
     'visibilitychange',
     () => {
-      targetWindow.__lcRumPush('visibility-change', { state: targetDocument.visibilityState });
+      targetWindow.__tspiRumPush('visibility-change', { state: targetDocument.visibilityState });
     },
     true,
   );
   targetWindow.addEventListener(
     'pageshow',
     (event) => {
-      targetWindow.__lcRumPush('pageshow', { persisted: event.persisted === true });
+      targetWindow.__tspiRumPush('pageshow', { persisted: event.persisted === true });
     },
     true,
   );
 
   if (targetNavigator.serviceWorker) {
     const controller = targetNavigator.serviceWorker.controller;
-    targetWindow.__lcRumPush('sw-controller', {
+    targetWindow.__tspiRumPush('sw-controller', {
       controlled: !!controller,
       state: controller && controller.state,
       scriptUrl: controller && controller.scriptURL,
     });
     targetNavigator.serviceWorker.getRegistrations().then(
       (registrations) => {
-        targetWindow.__lcRumPush('sw-registrations', {
+        targetWindow.__tspiRumPush('sw-registrations', {
           count: registrations.length,
           firstScopeUrl: registrations[0] && registrations[0].scope,
         });
       },
       () => {
-        targetWindow.__lcRumPush('sw-registrations-error');
+        targetWindow.__tspiRumPush('sw-registrations-error');
       },
     );
     targetNavigator.serviceWorker.addEventListener('controllerchange', () => {
       const nextController = targetNavigator.serviceWorker.controller;
-      targetWindow.__lcRumPush('sw-controller-change', {
+      targetWindow.__tspiRumPush('sw-controller-change', {
         state: nextController && nextController.state,
         scriptUrl: nextController && nextController.scriptURL,
       });
     });
     targetNavigator.serviceWorker.addEventListener('message', (event) => {
-      if (!event.data || event.data.type !== 'LC_SW_PING') {
+      if (!event.data || event.data.type !== 'TSPI_SW_PING') {
         return;
       }
-      targetWindow.__lcRumPush('sw-ping');
-      targetWindow.__lcRumPush('sw-pong');
+      targetWindow.__tspiRumPush('sw-ping');
+      targetWindow.__tspiRumPush('sw-pong');
     });
   }
 }

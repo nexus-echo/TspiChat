@@ -2,7 +2,7 @@ version: 1.3.15
 
 cache: true
 
-# TSPI Digital — clinician chat for TSPI Brain.
+# TSPI Digital Twin — clinician chat for TSPI Brain.
 # Day 1: WorkOS login, per-user token passthrough to the TSPI MCP, one locked clinical model spec.
 # Day 2: clinician UI lock-down, treatment-plan Skill (skill/tspi-treatment-plan), terms of use.
 
@@ -14,7 +14,7 @@ interface:
   # deliberately NOT set here: anything set here is re-applied to BOTH the USER and ADMIN roles on
   # every restart, which would also lock admins out. They are set per role instead, see
   # docs/tspi-day2-roles.md (USER = clinician view, ADMIN = everything).
-  customWelcome: 'Welcome to TSPI Digital. Describe symptoms and labs, or upload a lab report, to get a TSPI health analysis. Never enter names or other identifiers.'
+  customWelcome: 'Welcome to TSPI Digital Twin. Describe symptoms and labs, or upload a lab report, to get a TSPI health analysis. Never enter names or other identifiers.'
   modelSelect: false
   parameters: false
   presets: false
@@ -46,17 +46,17 @@ interface:
     externalUrl: 'https://chat.tspipro.com/legal/terms.html'
     openNewTab: true
     modalAcceptance: true
-    modalTitle: 'TSPI Digital: terms of use'
+    modalTitle: 'TSPI Digital Twin: terms of use'
     modalContent: |
-      # Terms of use for TSPI Digital
+      # Terms of use for TSPI Digital Twin
 
       By continuing you agree to the full Terms of Service and Privacy Policy linked below. In short:
 
-      1. **Not medical advice.** TSPI Digital produces AI-generated drafts. A draft is not a diagnosis or a prescription.
-      2. **Patients:** your TSPI health report is an **unreviewed AI draft**. It has not been reviewed or approved by a TSPI doctor. Do not start, stop or change any medicine or supplement because of it. To have it reviewed, contact TSPI Digital at https://tspi-main.vercel.app/contact.
+      1. **Not medical advice.** TSPI Digital Twin produces AI-generated drafts. A draft is not a diagnosis or a prescription.
+      2. **Patients:** your TSPI health report is an **unreviewed AI draft**. It has not been reviewed or approved by a TSPI doctor. Do not start, stop or change any medicine or supplement because of it. To have it reviewed, contact TSPI Digital Twin at https://tspi-main.vercel.app/contact.
       3. **Clinicians:** every treatment plan must be reviewed and approved by the treating physician before patient use. Clinical decisions remain your responsibility, and you confirm you have the patient's consent.
       4. **No identifiers.** Do not enter names, dates of birth, record numbers, phone numbers, emails or addresses.
-      5. **Emergencies.** TSPI Digital is not for emergencies. If you have severe symptoms, call your local emergency number (India 112, Thailand 1669) or go to the nearest hospital.
+      5. **Emergencies.** TSPI Digital Twin is not for emergencies. If you have severe symptoms, call your local emergency number (India 112, Thailand 1669) or go to the nearest hospital.
       6. **Records.** Your conversations, uploads, reports, approvals and edits are stored and logged under your account, as described in the Privacy Policy.
 
 # Memories (sidebar). A small background model saves user preferences between chats.
@@ -91,6 +91,10 @@ mcpServers:
     timeout: 120000
 
 endpoints:
+  # Caps tool-call steps per reply so a failing tool cannot loop for minutes (default is 25).
+  agents:
+    recursionLimit: 15
+    maxRecursionLimit: 25
   # Production target (not used on staging yet): switch the spec preset back to
   # `endpoint: anthropic`, `model: claude-sonnet-5-5` and set ENDPOINTS=agents,anthropic.
   anthropic:
@@ -118,7 +122,7 @@ modelSpecs:
   prioritize: true
   list:
     - name: tspi-clinical
-      label: TSPI Digital Assistant
+      label: TSPI Digital Twin Assistant
       # TSPI logo in the header, the spec menu and message avatars (instead of the provider icon).
       # Must be an absolute URL: relative paths are not treated as images.
       iconURL: 'https://chat.tspipro.com/assets/logo.svg'
@@ -143,25 +147,32 @@ modelSpecs:
         endpoint: DeepSeek # staging; production: anthropic / claude-sonnet-5-5
         model: deepseek-v4-pro
         promptPrefix: |
-          You are TSPI Digital, an assistant for the TSPI AI Brain. Follow the tspi-treatment-plan skill.
-          - At the start of every conversation call tspi_whoami. Role clinician or reviewer: use the
+          You are TSPI Digital Twin, an assistant for the TSPI AI Brain. Follow the tspi-treatment-plan skill.
+          - TSPI tool names in this app end in _mcp_tspi: whoami_mcp_tspi, engine_health_mcp_tspi,
+            screen_red_flags_mcp_tspi, analyze_case_mcp_tspi, generate_treatment_plan_mcp_tspi,
+            get_treatment_plan_mcp_tspi, approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi,
+            record_outcome_mcp_tspi. If the TSPI server instructions say tspi_<name>, call <name>_mcp_tspi.
+            Only call names that are in your tool list; never guess or rename one.
+          - If a TSPI tool returns "not found" or another error, do not retry it more than once. Tell the
+            user TSPI Brain is unavailable right now, ask them to try again shortly, and stop.
+          - At the start of every conversation call whoami_mcp_tspi. Role clinician or reviewer: use the
             clinician workflow. Role patient: use the patient workflow. Any other role: say there is no
             clinical access for this account and point to https://tspi-main.vercel.app/contact.
           - Collect only de-identified data: an age band, sex, symptoms, labs with units, medications
             and conditions. Never ask for or submit a name, date of birth, MRN, phone, email or
             address. If one is typed or appears in an upload, do not repeat it and leave it out.
-          - For a new case, always run tspi_screen_red_flags first. Show red flags before anything
+          - For a new case, always run screen_red_flags_mcp_tspi first. Show red flags before anything
             else; for a patient, urge them to seek urgent care now.
           - The TSPI engine is the only source of clinical conclusions. Present its output as-is and
             never invent or estimate scores, networks, modules, doses, evidence grades or outcomes.
           - After a report is generated, compare the labs you submitted with the engine's returned
             signals and list any lab the engine did not use.
-          - Clinicians: a generated plan is an AI draft. Never call tspi_approve_treatment_plan unless
+          - Clinicians: a generated plan is an AI draft. Never call approve_treatment_plan_mcp_tspi unless
             the clinician has explicitly asked to approve that specific report_id in this conversation.
           - Patients: start every report with the banner "UNREVIEWED AI DRAFT. Not reviewed or approved
-            by a TSPI doctor. Not medical advice." and tell them to contact TSPI Digital at
+            by a TSPI doctor. Not medical advice." and tell them to contact TSPI Digital Twin at
             https://tspi-main.vercel.app/contact for doctor review. Use plain language. Never call
-            tspi_approve_treatment_plan, tspi_update_treatment_plan or tspi_record_outcome for a patient.
+            approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi or record_outcome_mcp_tspi for a patient.
           - Keep case details out of web searches; search only for general medical literature.
           - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your
             reply. A button click arrives as a user message: carry it out (see the skill).

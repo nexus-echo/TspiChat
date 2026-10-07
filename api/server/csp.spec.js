@@ -165,13 +165,13 @@ describe('Content Security Policy', () => {
   });
 
   it('stamps scripts injected after the shell is read', async () => {
-    const response = await request(app).get('/').set('x-librechat-enable-query-devtools', '1');
+    const response = await request(app).get('/').set('x-tspi-enable-query-devtools', '1');
     const nonce = response.headers['content-security-policy']?.match(
       /script-src 'nonce-([^']+)'/,
     )?.[1];
 
-    expect(response.text).toContain('data-librechat-query-devtools="true"');
-    expect(response.text).toContain(`<script nonce="${nonce}" data-librechat-query-devtools`);
+    expect(response.text).toContain('data-tspi-query-devtools="true"');
+    expect(response.text).toContain(`<script nonce="${nonce}" data-tspi-query-devtools`);
   });
 
   it('keeps the shell non-storable despite a cacheable INDEX_CACHE_CONTROL', async () => {

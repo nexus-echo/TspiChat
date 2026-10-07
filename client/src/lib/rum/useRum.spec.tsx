@@ -247,7 +247,7 @@ describe('useRum', () => {
     await waitFor(() => {
       expect(mockInit).toHaveBeenCalledWith({
         advancedNetworkCapture: false,
-        apiKey: 'librechat-rum-proxy',
+        apiKey: 'tspi-rum-proxy',
         consoleCapture: false,
         disableReplay: true,
         service: 'librechat-web',

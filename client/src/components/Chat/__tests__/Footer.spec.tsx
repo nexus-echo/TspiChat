@@ -13,7 +13,7 @@ jest.mock('~/data-provider', () => ({
 }));
 
 const mockTranslations: Record<string, string> = {
-  com_ui_latest_footer: 'Every AI for Everyone.',
+  com_ui_latest_footer: 'Clinical decision support powered by TSPI AI Brain.',
   com_ui_privacy_policy: 'Privacy policy',
   com_ui_terms_of_service: 'Terms of service',
 };
@@ -23,12 +23,12 @@ jest.mock('~/hooks', () => ({
 }));
 
 describe('Footer', () => {
-  test('opens the default LibreChat site link in a new tab', () => {
+  test('shows the app title without an upstream link by default', () => {
     render(<Footer startupConfig={null} />);
-    const link = screen.getByRole('link', { name: /LibreChat/ });
-    expect(link).toHaveAttribute('href', 'https://librechat.ai');
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(
+      screen.getByText('TSPI Digital Twin - Clinical decision support powered by TSPI AI Brain.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   test('opens custom footer markdown links in a new tab', () => {

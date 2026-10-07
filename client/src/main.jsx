@@ -10,7 +10,7 @@ import 'katex/dist/katex.min.css';
 import 'katex/dist/contrib/copy-tex.js';
 
 window.addEventListener('vite:preloadError', (event) => {
-  if (window.__lcRecoverStaleAssets?.()) {
+  if (window.__tspiRecoverStaleAssets?.()) {
     event.preventDefault();
   }
 });

@@ -6,8 +6,8 @@ jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
 }));
 
-describe('About (TSPI Digital)', () => {
-  it('shows the TSPI Digital version', () => {
+describe('About (TSPI Digital Twin)', () => {
+  it('shows the TSPI Digital Twin version', () => {
     render(<About />);
     expect(screen.getByText('com_nav_about_tspi_version')).toBeInTheDocument();
     expect(screen.getByText(TSPI_DIGITAL_VERSION)).toBeInTheDocument();

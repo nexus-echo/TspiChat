@@ -4,6 +4,7 @@ import { ErrorMessage } from '~/components/Auth/ErrorMessage';
 import { TranslationKeys, useLocalize } from '~/hooks';
 import SocialLoginRender from './SocialLoginRender';
 import { BlinkAnimation } from './BlinkAnimation';
+import { DEFAULT_APP_TITLE } from '~/utils';
 import { Banner } from '../Banners';
 import Footer from './Footer';
 
@@ -75,7 +76,7 @@ function AuthLayout({
               <img
                 src="assets/logo.svg"
                 className="h-16 w-16 object-contain"
-                alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'TSPI Digital' })}
+                alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? DEFAULT_APP_TITLE })}
               />
             </div>
           </BlinkAnimation>

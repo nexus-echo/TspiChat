@@ -1,12 +1,12 @@
 import { LocalStorageKeys } from 'librechat-data-provider';
 
 export const CHAT_TITLE_IN_TAB_KEY = 'chatTitleInTab';
-export const DEFAULT_APP_TITLE = 'LibreChat';
+export const DEFAULT_APP_TITLE = 'TSPI Digital Twin';
 
 export const hasRealTitle = (title?: string | null): title is string =>
   title != null && title !== '' && title !== 'New Chat';
 
-const getAppTitle = (): string => {
+export const getAppTitle = (): string => {
   try {
     return localStorage.getItem(LocalStorageKeys.APP_TITLE) || DEFAULT_APP_TITLE;
   } catch {

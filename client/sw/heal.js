@@ -4,8 +4,8 @@
  * carry no recovery code of their own — the worker is the only code path
  * stale clients fetch fresh. Ping every window client; reload the ones
  * that cannot answer. */
-const PING_TYPE = 'LC_SW_PING';
-const PONG_TYPE = 'LC_SW_PONG';
+const PING_TYPE = 'TSPI_SW_PING';
+const PONG_TYPE = 'TSPI_SW_PONG';
 const PONG_TIMEOUT_MS = 1500;
 
 const pendingPongs = new Map();

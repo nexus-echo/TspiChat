@@ -9,9 +9,9 @@ import MarketplaceAdminSettings from './MarketplaceAdminSettings';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 import { SidePanelGroup } from '~/components/SidePanel';
 import CategoryTabs from './CategoryTabs';
+import { cn, getAppTitle } from '~/utils';
 import SearchBar from './SearchBar';
 import AgentGrid from './AgentGrid';
-import { cn } from '~/utils';
 
 interface AgentMarketplaceProps {
   className?: string;
@@ -47,7 +47,7 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Set page title
-  useDocumentTitle(`${localize('com_agents_marketplace')} | LibreChat`);
+  useDocumentTitle(`${localize('com_agents_marketplace')} | ${getAppTitle()}`);
 
   // Ensure endpoints config is loaded first (required for agent queries)
   useGetEndpointsQuery();

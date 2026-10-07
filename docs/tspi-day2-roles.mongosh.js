@@ -1,5 +1,5 @@
 /* global db, printjson */ // mongosh shell globals
-// TSPI Digital: role permissions (run once in the mongodb container, then restart the api).
+// TSPI Digital Twin: role permissions (run once in the mongodb container, then restart the api).
 //   mongosh LibreChat /path/to/tspi-day2-roles.mongosh.js
 // USER  = clinicians and patients: chat, history, search, bookmarks, files, prompts, memories,
 //         skills, scheduled chats, account. No Agent Builder, no MCP Settings.

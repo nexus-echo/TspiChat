@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useLocalize } from '~/hooks';
 
-/** TSPI: the About tab shows only the TSPI Digital product version. LibreChat's commit,
+/** TSPI: the About tab shows only the TSPI Digital Twin product version. LibreChat's commit,
  *  branch, build date and the "copy diagnostics" block are intentionally not shown. */
 export const TSPI_DIGITAL_VERSION = 'v1.0.0';
 

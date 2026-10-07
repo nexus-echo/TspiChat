@@ -151,8 +151,8 @@ export default defineConfig(({ command }) => ({
       },
       includeAssets: [],
       manifest: {
-        name: 'TSPI Digital',
-        short_name: 'TSPI Digital',
+        name: 'TSPI Digital Twin',
+        short_name: 'TSPI Digital Twin',
         display: 'standalone',
         background_color: '#001FB8',
         theme_color: '#001FB8',

@@ -1,4 +1,4 @@
-# Edit actions and reason codes for tspi_update_treatment_plan
+# Edit actions and reason codes for update_treatment_plan_mcp_tspi
 
 Every edit action needs one reason code. Pick the closest match; put detail in `rationale`.
 

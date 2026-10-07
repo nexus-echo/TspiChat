@@ -232,9 +232,9 @@ export function getOpenAIConfig(
   if (useOpenRouter || isVercel) {
     configOptions.defaultHeaders = Object.assign(
       {
-        'HTTP-Referer': 'https://librechat.ai',
-        'X-Title': 'LibreChat',
-        'X-OpenRouter-Title': 'LibreChat',
+        'HTTP-Referer': 'https://chat.tspipro.com',
+        'X-Title': 'TSPI Digital Twin',
+        'X-OpenRouter-Title': 'TSPI Digital Twin',
         'X-OpenRouter-Categories': 'general-chat,personal-agent',
       },
       headers,

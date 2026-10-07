@@ -354,25 +354,25 @@ describe('Server Configuration', () => {
     const defaultResponse = await request(app).get('/this/does/not/exist');
     const debugResponse = await request(app)
       .get('/this/does/not/exist')
-      .set('x-librechat-enable-query-devtools', '1');
+      .set('x-tspi-enable-query-devtools', '1');
     const directIndexResponse = await request(app)
       .get('/index.html')
-      .set('x-librechat-enable-query-devtools', '1');
+      .set('x-tspi-enable-query-devtools', '1');
 
     expect(defaultResponse.status).toBe(200);
-    expect(defaultResponse.headers.vary).toContain('x-librechat-enable-query-devtools');
+    expect(defaultResponse.headers.vary).toContain('x-tspi-enable-query-devtools');
     expect(defaultResponse.text).not.toContain('enableQueryDevtools');
 
     expect(debugResponse.status).toBe(200);
-    expect(debugResponse.headers.vary).toContain('x-librechat-enable-query-devtools');
-    expect(debugResponse.text).toContain('window.__LIBRECHAT_CONFIG__');
-    expect(debugResponse.text).toContain('data-librechat-query-devtools="true"');
+    expect(debugResponse.headers.vary).toContain('x-tspi-enable-query-devtools');
+    expect(debugResponse.text).toContain('window.__TSPI_CONFIG__');
+    expect(debugResponse.text).toContain('data-tspi-query-devtools="true"');
     expect(debugResponse.text).toContain('"enableQueryDevtools":true');
 
     expect(directIndexResponse.status).toBe(200);
-    expect(directIndexResponse.headers.vary).toContain('x-librechat-enable-query-devtools');
-    expect(directIndexResponse.text).toContain('window.__LIBRECHAT_CONFIG__');
-    expect(directIndexResponse.text).toContain('data-librechat-query-devtools="true"');
+    expect(directIndexResponse.headers.vary).toContain('x-tspi-enable-query-devtools');
+    expect(directIndexResponse.text).toContain('window.__TSPI_CONFIG__');
+    expect(directIndexResponse.text).toContain('data-tspi-query-devtools="true"');
     expect(directIndexResponse.text).toContain('"enableQueryDevtools":true');
   });
 
