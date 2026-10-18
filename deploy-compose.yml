@@ -5,12 +5,8 @@ services:
     #   dockerfile: Dockerfile.multi
     #   target: api-build
     image: ghcr.io/nexus-echo/tspichat-api:60dd5b5dd3b170aaad85722434daa4954a4603c3
-      healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - 'fetch("http://127.0.0.1:3080/health").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'fetch(\"http://127.0.0.1:3080/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -374,12 +370,8 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile.tool-call-server
       target: production
-      healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - 'fetch("http://127.0.0.1:3033/health").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'fetch(\"http://127.0.0.1:3033/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'"]
       interval: 30s
       timeout: 5s
       retries: 3
