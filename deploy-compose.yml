@@ -186,6 +186,12 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile
       target: api
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3112/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: always
     environment:
       - LOCAL_MODE=false
