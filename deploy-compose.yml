@@ -126,6 +126,12 @@ services:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
     restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "myuser", "-d", "mydatabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     volumes:
       - pgdata2:/var/lib/postgresql/data
 
@@ -136,7 +142,8 @@ services:
       - RAG_PORT=${RAG_PORT:-8000}
     restart: always
     depends_on:
-      - vectordb
+      vectordb:
+        condition: service_healthy
     env_file:
       - .env
 
