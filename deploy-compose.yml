@@ -104,7 +104,13 @@ services:
     volumes:
       - ./data-node:/data/db
     command: mongod --noauth
-
+  healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1}).ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      
   meilisearch:
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.35.1
@@ -118,6 +124,13 @@ services:
       - MEILI_NO_ANALYTICS=true
     volumes:
       - ./meili_data_v1.35.1:/meili_data
+      
+  healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=5", "http://127.0.0.1:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s    
 
   vectordb:
     image: pgvector/pgvector:0.8.0-pg15-trixie
