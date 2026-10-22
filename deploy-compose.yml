@@ -5,6 +5,12 @@ services:
     #   dockerfile: Dockerfile.multi
     #   target: api-build
     image: ghcr.io/nexus-echo/tspichat-api:60dd5b5dd3b170aaad85722434daa4954a4603c3
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'fetch(\"http://127.0.0.1:3080/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     container_name: LibreChat-API
     ports:
       - 3080:3080
@@ -76,6 +82,12 @@ services:
 
   client:
     image: nginx:1.27.0-alpine
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     labels:
       - traefik.enable=true
       - traefik.docker.network=cxdoqdslq6dwavqelmuujog2_default
@@ -104,7 +116,13 @@ services:
     volumes:
       - ./data-node:/data/db
     command: mongod --noauth
-
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1}).ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      
   meilisearch:
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.35.1
@@ -118,7 +136,13 @@ services:
       - MEILI_NO_ANALYTICS=true
     volumes:
       - ./meili_data_v1.35.1:/meili_data
-
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=5", "http://127.0.0.1:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
   vectordb:
     image: pgvector/pgvector:0.8.0-pg15-trixie
     environment:
@@ -126,6 +150,12 @@ services:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
     restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "myuser", "-d", "mydatabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     volumes:
       - pgdata2:/var/lib/postgresql/data
 
@@ -134,9 +164,16 @@ services:
     environment:
       - DB_HOST=vectordb
       - RAG_PORT=${RAG_PORT:-8000}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: always
     depends_on:
-      - vectordb
+      vectordb:
+        condition: service_healthy
     env_file:
       - .env
 
@@ -149,6 +186,12 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile
       target: api
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3112/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: always
     environment:
       - LOCAL_MODE=false
@@ -188,6 +231,12 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile
       target: worker
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3113/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: always
     environment:
       - LOCAL_MODE=false
@@ -339,6 +388,12 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile.tool-call-server
       target: production
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'fetch(\"http://127.0.0.1:3033/health\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: always
     environment:
       - TOOL_CALL_SERVER_PORT=3033
@@ -359,6 +414,12 @@ services:
       context: ./code-interpreter
       dockerfile: service/Dockerfile
       target: production
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: always
     environment:
       - MINIO_BUCKET=librechat-codeapi

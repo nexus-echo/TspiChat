@@ -232,7 +232,10 @@ RUN cargo build --release
 # ============================================================================
 FROM fedora:43 AS sandbox-runner-base
 
-RUN dnf install -y --setopt=install_weak_deps=False \
+
+RUN dnf clean all && \
+    dnf makecache --refresh && \
+    dnf install -y --setopt=install_weak_deps=False \
     libkrun \
     socat \
     curl \
@@ -242,6 +245,7 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     findutils \
     ca-certificates \
     && dnf clean all
+
 
 COPY --from=launcher-builder /launcher/target/release/sandbox-launcher /usr/local/bin/launcher
 COPY --from=nsjail-builder /usr/local/bin/sandbox-rootfs-setup /sandbox-rootfs-setup
