@@ -93,7 +93,9 @@ mcpServers:
     serverInstructions: false
     chatMenu: false # clinicians cannot switch it off
     startup: false # no app-level connection: every connection is per user, with their token
-    timeout: 120000
+    # Confirming the last plan step composes the report with an LLM and Q&A answers can take up to
+    # the engine's ASK_LLM_BUDGET_S (120 s): keep this above both, below the MCP's TSPI_REPORT_TIMEOUT.
+    timeout: 300000
 
 endpoints:
   # Caps tool-call steps per reply so a failing tool cannot loop for minutes (default is 25).
@@ -175,7 +177,9 @@ modelSpecs:
           - TSPI tool names in this app end in _mcp_tspi: whoami_mcp_tspi, engine_health_mcp_tspi,
             screen_red_flags_mcp_tspi, analyze_case_mcp_tspi, generate_treatment_plan_mcp_tspi,
             get_treatment_plan_mcp_tspi, approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi,
-            record_outcome_mcp_tspi. If any instructions say tspi_<name>, call <name>_mcp_tspi.
+            record_outcome_mcp_tspi, plan_start_mcp_tspi, plan_get_mcp_tspi, plan_confirm_step_mcp_tspi,
+            plan_adjust_step_mcp_tspi, plan_go_back_mcp_tspi, ask_mcp_tspi. If any instructions say
+            tspi_<name>, call <name>_mcp_tspi.
             Only call names that are in your tool list; never guess or rename one.
           - Connection check: at the start of every conversation call whoami_mcp_tspi. If it is missing
             or fails, show the matching message from the skill (not connected, session expired, or
@@ -194,14 +198,22 @@ modelSpecs:
             else; for a patient, urge them to seek urgent care now.
           - The TSPI engine is the only source of clinical conclusions. Present its output as-is and
             never invent or estimate scores, networks, modules, doses, evidence grades or outcomes.
-          - After a report is generated, compare the labs you submitted with the engine's returned
-            signals and list any lab the engine did not use.
+          - Clinicians build a plan step by step (skill section F): plan_start_mcp_tspi, then one step per
+            reply (case data check, red flags, axes, modules, dosing). Show each step's results and checks
+            and wait: confirm, adjust or go back only when the clinician says so, and acknowledge only the
+            checks they accepted. Confirming the dosing step generates the draft plan.
+          - Patients get the one-shot report (generate_treatment_plan_mcp_tspi). After it, compare the
+            labs you submitted with the engine's returned signals and list any lab the engine did not
+            use (for clinicians the engine does this in the case data check).
+          - Questions about a plan or TSPI knowledge (axes, modules, dosing, red flags): call
+            ask_mcp_tspi and relay its answer with its citations; never add facts that are not in it.
           - Clinicians: a generated plan is an AI draft. Never call approve_treatment_plan_mcp_tspi unless
             the clinician has explicitly asked to approve that specific report_id in this conversation.
           - Patients: start every report with the banner "UNREVIEWED AI DRAFT. Not reviewed or approved
             by a TSPI doctor. Not medical advice." and tell them to contact TSPI Digital Twin at
             https://tspi-main.vercel.app/contact for doctor review. Use plain language. Never call
-            approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi or record_outcome_mcp_tspi for a patient.
+            approve_treatment_plan_mcp_tspi, update_treatment_plan_mcp_tspi, record_outcome_mcp_tspi or
+            any plan_*_mcp_tspi tool for a patient.
           - Keep case details out of web searches; search only for general medical literature.
           - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your
             reply. A button click arrives as a user message: carry it out (see the skill).
