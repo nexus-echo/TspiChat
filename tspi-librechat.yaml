@@ -84,8 +84,12 @@ mcpServers:
     type: streamable-http
     url: https://mcp.tspipro.com/mcp
     headers:
-      # Each clinician's own WorkOS access token (requires OPENID_REUSE_TOKENS=true).
-      Authorization: 'Bearer {{LIBRECHAT_OPENID_ACCESS_TOKEN}}'
+      # A 5-minute TSPI token the chat signs for the signed-in user (auth/tspiMcpToken.ts),
+      # minted fresh for every connection and tool call. Needs TSPI_MCP_JWT_PRIVATE_KEY_BASE64.
+      Authorization: 'Bearer {{TSPI_MCP_TOKEN}}'
+    # The MCP still advertises WorkOS OAuth for Claude.ai and other connectors. The chat must
+    # never start that flow: a rejected chat token is an error, not a sign-in prompt.
+    requiresOAuth: false
     # Off on purpose: the tspi-treatment-plan skill carries every server rule (de-identified case,
     # red flags first, draft-until-approved, patient banner, \ui markers) plus this app's own
     # policy (patient label kept in the chat only, generated case codes). Pulling both in gives a

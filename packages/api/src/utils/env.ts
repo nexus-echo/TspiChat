@@ -10,6 +10,7 @@ import {
   processOpenIDPlaceholders,
   OpenIDReauthRequiredError,
 } from './oidc';
+import { TSPI_MCP_TOKEN_PLACEHOLDER, mintTspiMcpToken } from '~/auth/tspiMcpToken';
 
 /**
  * Provenance marker for MCP servers contributed by an Agent Plugins package.
@@ -49,6 +50,8 @@ const ALLOWED_USER_FIELDS = [
   'twoFactorEnabled',
   'termsAccepted',
   'termsAcceptedAt',
+  'tspiRole',
+  'tspiClinicId',
 ] as const;
 
 type AllowedUserField = (typeof ALLOWED_USER_FIELDS)[number];
@@ -160,6 +163,7 @@ const RESOLVABLE_PLACEHOLDER_PATTERN = new RegExp(
     `LIBRECHAT_USER_(?:${ALLOWED_USER_FIELDS.map((field) => field.toUpperCase()).join('|')})`,
     `LIBRECHAT_BODY_(?:${ALLOWED_BODY_FIELDS.map((field) => field.toUpperCase()).join('|')})`,
     OPENID_PLACEHOLDER_NAMES,
+    'TSPI_MCP_TOKEN',
   ]
     .map((names) => `\\{\\{(?:${names})\\}\\}`)
     .join('|'),
@@ -324,6 +328,18 @@ function processSingleValue({
    */
   if (!dbSourced) {
     value = extractEnvVariable(value);
+  }
+
+  /**
+   * TSPI MCP token. Resolved here, on the admin-authored template and before any user-controlled
+   * value is substituted, so only an operator (yaml) header can ask for it — never a user var,
+   * DB-stored server or plugin (those return earlier or never reach this branch). Minted from the
+   * verified request user on every resolution, so each MCP connection and tool call carries a
+   * live token. With no user (an app-level connection) it stays literal and is stripped later.
+   */
+  if (!dbSourced && isHeader && user && value.includes(TSPI_MCP_TOKEN_PLACEHOLDER)) {
+    const token = mintTspiMcpToken(user as Parameters<typeof mintTspiMcpToken>[0]);
+    value = value.split(TSPI_MCP_TOKEN_PLACEHOLDER).join(token);
   }
 
   /** Runs for both dbSourced and non-dbSourced — it is the only resolution DB-stored servers get */

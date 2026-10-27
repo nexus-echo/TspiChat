@@ -33,6 +33,7 @@
     "invite-user": "node config/invite-user.js",
     "list-users": "node config/list-users.js",
     "reset-password": "node config/reset-password.js",
+    "tspi-user": "node config/tspi-user.js",
     "ban-user": "node config/ban-user.js",
     "delete-user": "node config/delete-user.js",
     "reset-meili-sync": "node config/reset-meili-sync.js",

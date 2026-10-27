@@ -1,0 +1,265 @@
+/**
+ * TSPI MCP token issuer (chat → TSPI MCP).
+ *
+ * The chat backend is the trusted issuer of a dedicated, short-lived TSPI token for each
+ * signed-in user (TSPI Approved Authentication Module §2–§5). It replaces forwarding the
+ * user's WorkOS access token, so MCP calls no longer depend on an outside OpenID session
+ * staying refreshed.
+ *
+ * - Signed with EdDSA (Ed25519). The chat holds the private key; the MCP holds only the
+ *   public key and can verify but never issue.
+ * - Lifetime at most 300 s. A fresh token is minted per MCP connection and per tool call
+ *   (headers are re-resolved on every call), with a short reuse window.
+ * - `sub` is the LibreChat user id. `scope` is derived from the user's TSPI role, which
+ *   lives on the user record (`tspiRole`, set by an admin), never from anything the browser
+ *   or the model sends.
+ * - Transitional claims `role`, `clinic_id`, `email`, `name`: the engine still takes role
+ *   and clinic from the MCP, and reports name who created/approved a plan. They go away when
+ *   the engine reads them from its own records (v2).
+ * - `tspi_uid`: the id the engine stores as the case/report owner. For an account first created
+ *   by WorkOS sign-in it is that WorkOS user id (`openidId`), so existing plans stay with their
+ *   owner and the same person reaching the MCP through Claude.ai (WorkOS) is the same engine
+ *   user. Otherwise it is the LibreChat id (`sub`).
+ *
+ * Used through the `{{TSPI_MCP_TOKEN}}` header placeholder in librechat.yaml, which only
+ * resolves for operator-authored (yaml) server configs — see `utils/env.ts`.
+ */
+import { createHash, createPrivateKey, randomUUID, sign as cryptoSign } from 'crypto';
+import type { KeyObject } from 'crypto';
+
+export const TSPI_MCP_TOKEN_PLACEHOLDER = '{{TSPI_MCP_TOKEN}}';
+
+export const TSPI_ROLES = ['patient', 'clinic_staff', 'clinician', 'reviewer', 'auditor'] as const;
+export type TspiRole = (typeof TSPI_ROLES)[number];
+
+/**
+ * Scope catalogue. Must match `SCOPE_BY_ROLE` / `TOOL_SCOPES` in the MCP
+ * (apps/tspi-mcp/tspi_mcp/scopes.py). The engine still enforces its own RBAC on every call.
+ */
+export const TSPI_ROLE_SCOPES: Record<TspiRole, readonly string[]> = {
+  patient: ['tspi:case:analyze', 'tspi:plan:read', 'tspi:knowledge:read'],
+  clinic_staff: ['tspi:case:analyze', 'tspi:plan:read', 'tspi:knowledge:read'],
+  clinician: [
+    'tspi:case:analyze',
+    'tspi:plan:read',
+    'tspi:plan:write',
+    'tspi:plan:approve',
+    'tspi:knowledge:read',
+  ],
+  reviewer: [
+    'tspi:case:analyze',
+    'tspi:plan:read',
+    'tspi:plan:write',
+    'tspi:plan:approve',
+    'tspi:knowledge:read',
+  ],
+  auditor: ['tspi:plan:read', 'tspi:knowledge:read'],
+};
+
+const DEFAULT_ISSUER = 'tspi-chat';
+const DEFAULT_AUDIENCE = 'tspi-mcp';
+const DEFAULT_KID = 'tspi-chat-1';
+const MAX_TTL_SECONDS = 300;
+/** A cached token is reused only while it has at least this long left. */
+const MIN_REMAINING_SECONDS = 120;
+const MAX_CACHE_ENTRIES = 2000;
+
+export interface TspiTokenUser {
+  id?: string;
+  _id?: { toString(): string } | string;
+  email?: string;
+  name?: string;
+  openidId?: string | null;
+  tspiRole?: string | null;
+  tspiClinicId?: string | null;
+}
+
+export interface TspiMcpClaims {
+  iss: string;
+  aud: string;
+  sub: string;
+  iat: number;
+  nbf: number;
+  exp: number;
+  jti: string;
+  scope: string;
+  role: string;
+  tspi_uid: string;
+  clinic_id?: string;
+  email?: string;
+  name?: string;
+}
+
+interface SigningConfig {
+  rawKey: string;
+  key: KeyObject;
+  kid: string;
+  issuer: string;
+  audience: string;
+  ttlSeconds: number;
+}
+
+let signingConfigCache: SigningConfig | null = null;
+const tokenCache = new Map<string, { token: string; exp: number }>();
+
+function normalizePem(value: string): string {
+  return value.replace(/\\n/g, '\n').trim();
+}
+
+function getPrivateKeyRaw(): string | null {
+  const inline = process.env.TSPI_MCP_JWT_PRIVATE_KEY;
+  if (inline && inline.trim() !== '') {
+    return normalizePem(inline);
+  }
+  const b64 = process.env.TSPI_MCP_JWT_PRIVATE_KEY_BASE64;
+  if (b64 && b64.trim() !== '') {
+    return normalizePem(Buffer.from(b64.trim(), 'base64').toString('utf8'));
+  }
+  return null;
+}
+
+/** True when a signing key is configured. */
+export function isTspiMcpTokenConfigured(): boolean {
+  return getPrivateKeyRaw() != null;
+}
+
+function getSigningConfig(): SigningConfig {
+  const rawKey = getPrivateKeyRaw();
+  if (!rawKey) {
+    throw new Error(
+      'TSPI MCP token signing key is not configured (set TSPI_MCP_JWT_PRIVATE_KEY_BASE64)',
+    );
+  }
+  const kid = process.env.TSPI_MCP_JWT_KID || DEFAULT_KID;
+  const issuer = process.env.TSPI_MCP_JWT_ISSUER || DEFAULT_ISSUER;
+  const audience = process.env.TSPI_MCP_JWT_AUDIENCE || DEFAULT_AUDIENCE;
+  const parsedTtl = Number(process.env.TSPI_MCP_JWT_TTL_SECONDS);
+  const ttlSeconds =
+    Number.isFinite(parsedTtl) && parsedTtl > 0
+      ? Math.min(Math.floor(parsedTtl), MAX_TTL_SECONDS)
+      : MAX_TTL_SECONDS;
+
+  const c = signingConfigCache;
+  if (
+    c &&
+    c.rawKey === rawKey &&
+    c.kid === kid &&
+    c.issuer === issuer &&
+    c.audience === audience &&
+    c.ttlSeconds === ttlSeconds
+  ) {
+    return c;
+  }
+
+  let key: KeyObject;
+  try {
+    key = createPrivateKey(rawKey);
+  } catch {
+    // Never echo the key material in the error.
+    throw new Error('TSPI MCP token signing key could not be loaded (expected an Ed25519 PEM)');
+  }
+  if (key.asymmetricKeyType !== 'ed25519') {
+    throw new Error(
+      `TSPI MCP token signing key must be Ed25519, received ${key.asymmetricKeyType}`,
+    );
+  }
+  signingConfigCache = { rawKey, key, kid, issuer, audience, ttlSeconds };
+  tokenCache.clear();
+  return signingConfigCache;
+}
+
+function nonEmpty(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const v = value.trim();
+    return v === '' ? undefined : v;
+  }
+  if (value && typeof value === 'object' && 'toString' in value) {
+    const v = String(value).trim();
+    return v === '' || v === '[object Object]' ? undefined : v;
+  }
+  return undefined;
+}
+
+export function resolveTspiRole(value: unknown): TspiRole | 'unassigned' {
+  const role = nonEmpty(value);
+  return role && (TSPI_ROLES as readonly string[]).includes(role)
+    ? (role as TspiRole)
+    : 'unassigned';
+}
+
+function base64Url(value: Buffer | string): string {
+  return Buffer.from(value).toString('base64url');
+}
+
+/** Identity part of the claims; the cache key, so a role or clinic change mints a new token. */
+function identityClaims(user: TspiTokenUser) {
+  const sub = nonEmpty(user.id) ?? nonEmpty(user._id);
+  if (!sub) {
+    throw new Error('TSPI MCP token minting requires an authenticated user');
+  }
+  const role = resolveTspiRole(user.tspiRole);
+  const scope = role === 'unassigned' ? '' : TSPI_ROLE_SCOPES[role].join(' ');
+  const out: Omit<TspiMcpClaims, 'iss' | 'aud' | 'iat' | 'nbf' | 'exp' | 'jti'> = {
+    sub,
+    scope,
+    role,
+    tspi_uid: nonEmpty(user.openidId) ?? sub,
+  };
+  const clinic = nonEmpty(user.tspiClinicId);
+  const email = nonEmpty(user.email);
+  const name = nonEmpty(user.name);
+  if (clinic) out.clinic_id = clinic;
+  if (email) out.email = email;
+  if (name) out.name = name;
+  return out;
+}
+
+/** Signs claims as a compact EdDSA JWS. Exported for tests. */
+export function signTspiMcpClaims(claims: TspiMcpClaims, config = getSigningConfig()): string {
+  const header = { alg: 'EdDSA', typ: 'JWT', kid: config.kid };
+  const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claims))}`;
+  const signature = cryptoSign(null, Buffer.from(signingInput), config.key);
+  return `${signingInput}.${base64Url(signature)}`;
+}
+
+/**
+ * Returns a TSPI MCP bearer token for this user. Reuses a cached token only while it has at
+ * least two minutes left, so a long tool call never starts on a nearly expired token.
+ */
+export function mintTspiMcpToken(user: TspiTokenUser, nowMs: number = Date.now()): string {
+  const config = getSigningConfig();
+  const identity = identityClaims(user);
+  const now = Math.floor(nowMs / 1000);
+  const cacheKey = createHash('sha256').update(JSON.stringify(identity)).digest('hex');
+
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.exp - now >= MIN_REMAINING_SECONDS) {
+    return cached.token;
+  }
+
+  const claims: TspiMcpClaims = {
+    iss: config.issuer,
+    aud: config.audience,
+    iat: now,
+    nbf: now,
+    exp: now + config.ttlSeconds,
+    jti: randomUUID(),
+    ...identity,
+  };
+  const token = signTspiMcpClaims(claims, config);
+
+  if (tokenCache.size >= MAX_CACHE_ENTRIES) {
+    for (const [key, entry] of tokenCache) {
+      if (entry.exp - now < MIN_REMAINING_SECONDS) tokenCache.delete(key);
+    }
+    if (tokenCache.size >= MAX_CACHE_ENTRIES) tokenCache.clear();
+  }
+  tokenCache.set(cacheKey, { token, exp: claims.exp });
+  return token;
+}
+
+/** Test helper. */
+export function resetTspiMcpTokenCache(): void {
+  signingConfigCache = null;
+  tokenCache.clear();
+}

@@ -131,6 +131,16 @@ const userSchema: Schema<IUser> = new Schema<IUser>(
       type: Date,
       default: null,
     },
+    /** TSPI Brain role, set by an admin (config/tspi-user.js). Drives the TSPI MCP token's
+     * scopes; never taken from the browser. Unset = no TSPI access. */
+    tspiRole: {
+      type: String,
+      enum: ['patient', 'clinic_staff', 'clinician', 'reviewer', 'auditor'],
+    },
+    /** TSPI clinic (tenant) the user belongs to, forwarded to the engine for tenant checks. */
+    tspiClinicId: {
+      type: String,
+    },
     agentTriggerDeletionStartedAt: {
       type: Date,
       select: false,

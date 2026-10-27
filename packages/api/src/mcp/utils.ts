@@ -183,7 +183,9 @@ export function normalizeAgentToolKeys(params: {
   };
 }
 
-const RUNTIME_CONTEXT_PLACEHOLDER_PATTERN = /\{\{LIBRECHAT_(?:USER|OPENID|GRAPH)_[^}]+\}\}/;
+/** `{{TSPI_MCP_TOKEN}}` is minted per user (auth/tspiMcpToken.ts), so it scopes the connection too. */
+const RUNTIME_CONTEXT_PLACEHOLDER_PATTERN =
+  /\{\{(?:LIBRECHAT_(?:USER|OPENID|GRAPH)_[^}]+|TSPI_MCP_TOKEN)\}\}/;
 const BODY_PLACEHOLDER_FIELDS = Object.fromEntries(
   ALLOWED_BODY_FIELDS.map((field) => [field.toUpperCase(), field]),
 ) as Record<string, keyof RequestBody>;
