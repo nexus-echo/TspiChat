@@ -90,7 +90,7 @@ export interface TspiMcpClaims {
   name?: string;
 }
 
-interface SigningConfig {
+export interface TspiMcpSigningConfig {
   rawKey: string;
   key: KeyObject;
   kid: string;
@@ -99,7 +99,7 @@ interface SigningConfig {
   ttlSeconds: number;
 }
 
-let signingConfigCache: SigningConfig | null = null;
+let signingConfigCache: TspiMcpSigningConfig | null = null;
 const tokenCache = new Map<string, { token: string; exp: number }>();
 
 function normalizePem(value: string): string {
@@ -123,7 +123,7 @@ export function isTspiMcpTokenConfigured(): boolean {
   return getPrivateKeyRaw() != null;
 }
 
-function getSigningConfig(): SigningConfig {
+function getSigningConfig(): TspiMcpSigningConfig {
   const rawKey = getPrivateKeyRaw();
   if (!rawKey) {
     throw new Error(
@@ -215,7 +215,10 @@ function identityClaims(user: TspiTokenUser) {
 }
 
 /** Signs claims as a compact EdDSA JWS. Exported for tests. */
-export function signTspiMcpClaims(claims: TspiMcpClaims, config = getSigningConfig()): string {
+export function signTspiMcpClaims(
+  claims: TspiMcpClaims,
+  config: TspiMcpSigningConfig = getSigningConfig(),
+): string {
   const header = { alg: 'EdDSA', typ: 'JWT', kid: config.kid };
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claims))}`;
   const signature = cryptoSign(null, Buffer.from(signingInput), config.key);
