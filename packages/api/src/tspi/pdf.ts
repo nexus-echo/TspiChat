@@ -7,6 +7,8 @@ import type {
   TspiSafetyAlert,
   TspiPlanRecord,
   TspiRedFlagScreen,
+  TspiSignal,
+  TspiUnmappedLab,
 } from './types';
 import { getApproval, getCaseCode } from './report';
 
@@ -56,6 +58,8 @@ const TRANSLITERATIONS: Record<string, string> = {
   '↑': 'up',
   '↓': 'down',
   '≈': '~',
+  '⚠': '(!)',
+  '🚩': '(!)',
   '−': '-',
   ' ': ' ',
 };
@@ -322,7 +326,9 @@ const redFlagLines = (screen: TspiRedFlagScreen | null | undefined): string[] =>
 const alertText = (alert: string | TspiSafetyAlert): string =>
   typeof alert === 'string'
     ? alert
-    : [alert.severity, alert.message ?? alert.description].filter(Boolean).join(': ');
+    : [humanize(alert.severity), alert.message ?? alert.description ?? alert.reason]
+        .filter((part) => part && part !== '-')
+        .join(': ');
 
 const moduleSafety = (module: TspiModule): string =>
   [
@@ -338,8 +344,37 @@ const moduleSafety = (module: TspiModule): string =>
 const editTarget = (edit: TspiEdit): string =>
   edit.target ?? edit.module_code ?? edit.axis_code ?? '-';
 
-const labStatus = (concept: string | null | undefined): string =>
-  concept?.startsWith('lab:') ? 'Not recognised' : 'Used';
+/** How the engine used one signal: scored, normal, recognised, or read but not scored. */
+export const labStatus = (signal: TspiSignal, unmapped: TspiUnmappedLab[] = []): string => {
+  const gap = unmapped.find(
+    (lab) => lab.analyte != null && (signal.source ?? '').startsWith(`${lab.analyte}=`),
+  );
+  if (gap?.reason === 'NO_AXIS_MAPPING') {
+    return 'Not scored';
+  }
+  if (signal.concept?.startsWith('lab:')) {
+    return 'Not recognised';
+  }
+  return signal.direction === 'normal' ? 'Normal (not scored)' : 'Used';
+};
+
+/** Rows for "Labs not used for scoring": each lab the engine kept but did not score, and why. */
+export const unmappedLabRows = (labs: TspiUnmappedLab[]): string[][] =>
+  labs.map((lab) => [
+    `${lab.analyte ?? '-'}=${lab.value ?? ''}${lab.unit ?? ''}${lab.flag ? ` (${lab.flag})` : ''}`,
+    lab.detail || humanize(lab.reason),
+  ]);
+
+/** What a patient reads in place of a plan the engine withheld until a doctor approves and releases it. */
+export const hiddenPlanText = (reason: string | null | undefined): string => {
+  if (reason === 'rejected') {
+    return `A TSPI doctor reviewed this report and did not approve a treatment plan. Please contact TSPI Digital Twin: ${PATIENT_CONTACT_URL}`;
+  }
+  if (reason === 'release_blocked') {
+    return `A TSPI doctor has reviewed this report, but the treatment plan cannot be released yet. Please contact TSPI Digital Twin: ${PATIENT_CONTACT_URL}`;
+  }
+  return `Your treatment plan is shown only after a TSPI doctor reviews and approves it. Contact TSPI Digital Twin for doctor review: ${PATIENT_CONTACT_URL}`;
+};
 
 const statusLine = (doc: Doc, plan: TspiPlanRecord, approval: TspiApproval, viewer: TspiViewer) => {
   const approver = plan.payload.approved_by;
@@ -351,23 +386,32 @@ const statusLine = (doc: Doc, plan: TspiPlanRecord, approval: TspiApproval, view
   } else if (approval === 'rejected') {
     text = `REJECTED by ${approver?.name ?? 'TSPI physician'} on ${formatTimestamp(approver?.at)}`;
   } else if (viewer.role === 'patient') {
-    text = 'UNREVIEWED AI DRAFT – Not reviewed by a TSPI doctor';
+    text = plan.payload.plan_hidden
+      ? 'UNREVIEWED AI ANALYSIS – Not reviewed by a TSPI doctor'
+      : 'UNREVIEWED AI DRAFT – Not reviewed by a TSPI doctor';
   }
   doc.font(FONT_BOLD).fontSize(11).fillColor(color);
   doc.text(toPdfText(text), MARGIN, doc.y, { width: contentWidth(doc) });
   doc.moveDown(0.5);
 };
 
-const watermarkText = (approval: TspiApproval, viewer: TspiViewer): string | undefined => {
+const watermarkText = (
+  approval: TspiApproval,
+  viewer: TspiViewer,
+  planHidden: boolean,
+): string | undefined => {
   if (approval === 'approved') {
     return undefined;
   }
   if (approval === 'rejected') {
     return 'REJECTED – NOT FOR PATIENT USE';
   }
-  return viewer.role === 'patient'
-    ? 'UNREVIEWED AI DRAFT – NOT MEDICAL ADVICE'
-    : 'DRAFT – NOT FOR PATIENT USE';
+  if (viewer.role !== 'patient') {
+    return 'DRAFT – NOT FOR PATIENT USE';
+  }
+  return planHidden
+    ? 'UNREVIEWED AI ANALYSIS – NOT MEDICAL ADVICE'
+    : 'UNREVIEWED AI DRAFT – NOT MEDICAL ADVICE';
 };
 
 const decoratePages = (doc: Doc, watermark: string | undefined): void => {
@@ -412,18 +456,23 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
   const approval = getApproval(plan);
   const isPatient = viewer.role === 'patient';
 
+  const planHidden = Boolean(payload.plan_hidden);
   statusLine(doc, plan, approval, viewer);
   if (isPatient && approval !== 'approved') {
     noticeBox(
       doc,
       [
-        'UNREVIEWED AI DRAFT. Not reviewed or approved by a TSPI doctor. Not medical advice.',
+        planHidden
+          ? 'UNREVIEWED AI ANALYSIS. Not reviewed by a TSPI doctor. Not medical advice.'
+          : 'UNREVIEWED AI DRAFT. Not reviewed or approved by a TSPI doctor. Not medical advice.',
         `Do not start, stop or change any medicine or supplement because of this report. Contact TSPI Digital Twin for doctor review: ${PATIENT_CONTACT_URL}`,
       ],
       COLORS.orange,
     );
   }
-  const notice = payload.pilot_notice ?? payload.disclaimer;
+  // for a withheld plan the engine's disclaimer repeats the patient notice above
+  const disclaimer = planHidden ? undefined : payload.disclaimer;
+  const notice = payload.pilot_notice ?? disclaimer;
   if (notice) {
     noticeBox(doc, [notice], COLORS.orange);
   }
@@ -479,7 +528,7 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
   }
 
   if (payload.report_markdown) {
-    sectionTitle(doc, 'Clinical report');
+    sectionTitle(doc, planHidden ? 'Your analysis' : 'Clinical report');
     markdown(doc, payload.report_markdown);
   }
 
@@ -526,9 +575,11 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
     );
   }
 
-  sectionTitle(doc, 'Treatment modules');
+  sectionTitle(doc, planHidden ? 'Your treatment plan' : 'Treatment modules');
   const modules = payload.modules ?? [];
-  if (modules.length) {
+  if (planHidden) {
+    paragraph(doc, hiddenPlanText(payload.plan_hidden_reason));
+  } else if (modules.length) {
     table(
       doc,
       [
@@ -553,6 +604,7 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
   }
 
   const signals = analysis.signals ?? [];
+  const unmapped = analysis.unmapped_labs ?? [];
   if (signals.length) {
     sectionTitle(doc, 'Lab and symptom usage');
     table(
@@ -567,8 +619,20 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
         s.source ?? '-',
         s.concept?.startsWith('lab:') ? '-' : (s.concept ?? '-'),
         humanize(s.evidence_status),
-        labStatus(s.concept),
+        labStatus(s, unmapped),
       ]),
+    );
+  }
+
+  if (unmapped.length) {
+    sectionTitle(doc, 'Labs not used for scoring');
+    table(
+      doc,
+      [
+        ['Result', 0.38],
+        ['Why', 0.62],
+      ],
+      unmappedLabRows(unmapped),
     );
   }
 
@@ -598,9 +662,9 @@ const renderBody = (doc: Doc, plan: TspiPlanRecord, viewer: TspiViewer): TspiApp
     );
   }
 
-  if (payload.disclaimer && payload.disclaimer !== notice) {
+  if (disclaimer && disclaimer !== notice) {
     sectionTitle(doc, 'Disclaimer');
-    paragraph(doc, payload.disclaimer, COLORS.muted);
+    paragraph(doc, disclaimer, COLORS.muted);
   }
   return approval;
 };
@@ -632,7 +696,7 @@ export const renderReportPdf = (plan: TspiPlanRecord, viewer: TspiViewer): Promi
     try {
       drawHeaderBar(doc, plan);
       const approval = renderBody(doc, plan, viewer);
-      decoratePages(doc, watermarkText(approval, viewer));
+      decoratePages(doc, watermarkText(approval, viewer, Boolean(plan.payload.plan_hidden)));
       doc.end();
     } catch (error) {
       reject(error);

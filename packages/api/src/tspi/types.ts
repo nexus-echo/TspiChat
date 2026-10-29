@@ -45,8 +45,19 @@ export interface TspiRedFlagScreen {
   required_action?: string | null;
 }
 
+/** A lab result the engine kept but did not use for scoring, and why (`unmapped_labs`). */
+export interface TspiUnmappedLab {
+  analyte?: string | null;
+  value?: number | string | null;
+  unit?: string | null;
+  flag?: string | null;
+  reason?: string | null;
+  detail?: string | null;
+}
+
 export interface TspiAnalysis {
   signals?: TspiSignal[] | null;
+  unmapped_labs?: TspiUnmappedLab[] | null;
   axis_scores?: TspiAxisScore[] | null;
   severity_name?: string | null;
   nine_step_position?: number | null;
@@ -81,6 +92,8 @@ export interface TspiNetwork {
 export interface TspiSafetyAlert {
   message?: string | null;
   description?: string | null;
+  /** The engine's own field for the alert text. */
+  reason?: string | null;
   severity?: string | null;
 }
 
@@ -108,6 +121,9 @@ export interface TspiPlanPayload {
   edits?: TspiEdit[] | null;
   created_by?: TspiActor | null;
   approved_by?: TspiActor | null;
+  /** Patient view: the engine withholds modules and doses until a doctor approves and releases the plan. */
+  plan_hidden?: boolean | null;
+  plan_hidden_reason?: string | null;
 }
 
 export interface TspiPlanRecord {
