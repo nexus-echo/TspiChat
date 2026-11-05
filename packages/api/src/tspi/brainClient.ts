@@ -80,7 +80,31 @@ function statusCode(status: number): TspiBrainErrorCode {
   return 'unavailable';
 }
 
-export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainClientOptions = {}) {
+/**
+ * Declared explicitly: the package build emits declarations with `isolatedDeclarations`, so an
+ * exported function needs an explicit return type.
+ */
+export interface TspiBrainClient {
+  /** The v1 report record (same JSON the get_treatment_plan tool returns). */
+  getReport(reportId: string): Promise<TspiPlanRecord>;
+  /** An M11 report's PDF, made and stored by the Brain. */
+  getReportPdf(reportId: string): Promise<{ filename: string; buffer: Buffer }>;
+  /** The Brain's view of the user (`v1_role`, memberships). */
+  getMe(): Promise<TspiBrainMe>;
+  /** The Open click: binds this conversation to the patient. */
+  openPatient(patientId: string): Promise<TspiChatContext>;
+  /** The Confirm or Cancel click on a pending change. */
+  decideConfirmation(
+    id: string,
+    decision: 'confirm' | 'cancel',
+    payloadSha256: string,
+  ): Promise<TspiConfirmation>;
+}
+
+export function createTspiBrainClient(
+  user: TspiTokenUser,
+  options: TspiBrainClientOptions = {},
+): TspiBrainClient {
   const baseUrl = options.baseUrl?.replace(/\/+$/, '') || brainUrlFromEnv();
   const doFetch = options.fetch ?? fetch;
 
@@ -182,5 +206,3 @@ export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainCli
     },
   };
 }
-
-export type TspiBrainClient = ReturnType<typeof createTspiBrainClient>;
