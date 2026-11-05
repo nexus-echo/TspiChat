@@ -232,6 +232,63 @@ describe('createTspiReportPdf', () => {
     await expect(createTspiReportPdf('abc123', brain)).rejects.toMatchObject({ code: 'forbidden' });
   });
 
+  const V2_ID = '0b7f3c1e-5a4d-4c1b-9a77-2d3e4f5a6b7c';
+
+  it('streams the Brain PDF for an M11 report', async () => {
+    const pdf = { filename: 'TSPI-report-v1-th-2.pdf', buffer: Buffer.from('%PDF-1.7 brain') };
+    const brain = {
+      ...brainWith(
+        async () => basePlan(),
+        async () => ({}),
+      ),
+      getReportPdf: jest.fn(async () => pdf),
+    };
+    await expect(createTspiReportPdf(V2_ID, brain)).resolves.toBe(pdf);
+    expect(brain.getReportPdf).toHaveBeenCalledWith(V2_ID);
+    expect(brain.getReport).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the v1 renderer when the Brain has no v2 report with that id', async () => {
+    const brain = {
+      ...brainWith(
+        async () => approvedPlan(),
+        async () => ({}),
+      ),
+      getReportPdf: jest.fn(async () => {
+        throw new TspiBrainError('not_found', 404, 'No such report.');
+      }),
+    };
+    const file = await createTspiReportPdf(V2_ID, brain);
+    expect(brain.getReport).toHaveBeenCalledWith(V2_ID);
+    expect(file.buffer.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  it('passes on a Brain refusal of an M11 report', async () => {
+    const brain = {
+      ...brainWith(
+        async () => approvedPlan(),
+        async () => ({}),
+      ),
+      getReportPdf: jest.fn(async () => {
+        throw new TspiBrainError('forbidden', 403, 'Clinic only.');
+      }),
+    };
+    await expect(createTspiReportPdf(V2_ID, brain)).rejects.toMatchObject({ code: 'forbidden' });
+    expect(brain.getReport).not.toHaveBeenCalled();
+  });
+
+  it('keeps v1 report ids on the v1 renderer', async () => {
+    const brain = {
+      ...brainWith(
+        async () => approvedPlan(),
+        async () => ({}),
+      ),
+      getReportPdf: jest.fn(),
+    };
+    await createTspiReportPdf('0f34c5c43a2a499598bef3a73e7aeb54', brain);
+    expect(brain.getReportPdf).not.toHaveBeenCalled();
+  });
+
   it('rejects malformed report ids before calling the Brain', async () => {
     const brain = brainWith(
       async () => basePlan(),

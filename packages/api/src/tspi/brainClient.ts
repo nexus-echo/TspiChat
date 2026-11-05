@@ -70,6 +70,7 @@ export function brainUrlFromEnv(env: NodeJS.ProcessEnv = process.env): string | 
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const SHA256 = /^[0-9a-f]{64}$/i;
+const SAFE_FILE = /^[A-Za-z0-9._-]{1,128}\.pdf$/;
 
 function statusCode(status: number): TspiBrainErrorCode {
   if (status === 400 || status === 422) return 'invalid';
@@ -83,7 +84,12 @@ export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainCli
   const baseUrl = options.baseUrl?.replace(/\/+$/, '') || brainUrlFromEnv();
   const doFetch = options.fetch ?? fetch;
 
-  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function send(
+    method: string,
+    path: string,
+    body?: unknown,
+    accept = 'application/json',
+  ): Promise<Response> {
     if (!baseUrl) {
       throw new TspiBrainError('not_configured', 503, 'TSPI_BRAIN_URL is not set');
     }
@@ -97,7 +103,7 @@ export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainCli
         method,
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
+          Accept: accept,
           ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -119,7 +125,11 @@ export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainCli
       // Never echo the token.
       throw new TspiBrainError(statusCode(res.status), res.status, detail, problem);
     }
-    return (await res.json()) as T;
+    return res;
+  }
+
+  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return (await (await send(method, path, body)).json()) as T;
   }
 
   return {
@@ -129,6 +139,25 @@ export function createTspiBrainClient(user: TspiTokenUser, options: TspiBrainCli
         return Promise.reject(new TspiBrainError('invalid', 400, 'Invalid report id'));
       }
       return call<TspiPlanRecord>('GET', `/reports/${encodeURIComponent(reportId)}`);
+    },
+    /**
+     * An M11 report's PDF, made and stored by the Brain (WeasyPrint, English or Thai). The Brain
+     * checks the audience (physician report: clinic only) and the identity projection.
+     */
+    getReportPdf: async (reportId: string): Promise<{ filename: string; buffer: Buffer }> => {
+      if (!SAFE_ID.test(reportId)) {
+        throw new TspiBrainError('invalid', 400, 'Invalid report id');
+      }
+      const res = await send(
+        'GET',
+        `/api/v2/reports/${encodeURIComponent(reportId)}/pdf`,
+        undefined,
+        'application/pdf',
+      );
+      const match = /filename="?([^";]+)"?/i.exec(res.headers.get('content-disposition') ?? '');
+      const filename =
+        match?.[1] && SAFE_FILE.test(match[1]) ? match[1] : `TSPI-report-${reportId}.pdf`;
+      return { filename, buffer: Buffer.from(await res.arrayBuffer()) };
     },
     /** The Brain's view of the user (`v1_role`, memberships). */
     getMe: () => call<TspiBrainMe>('GET', '/api/v2/me'),

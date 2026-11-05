@@ -100,6 +100,29 @@ describe('createTspiBrainClient', () => {
     expect(calls[0].body).toEqual({ patient_id: 'p1' });
   });
 
+  it('downloads an M11 report PDF from the Brain', async () => {
+    const calls: { url: string; headers: Record<string, string> }[] = [];
+    const impl = (async (url: string, init: RequestInit) => {
+      calls.push({ url, headers: init.headers as Record<string, string> });
+      return new Response(Buffer.from('%PDF-1.7 x'), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="TSPI-summary-v2-th-1.pdf"',
+        },
+      });
+    }) as unknown as typeof fetch;
+    const brain = createTspiBrainClient(user, { baseUrl: 'https://brain.test', fetch: impl });
+    const file = await brain.getReportPdf('0b7f3c1e-5a4d-4c1b-9a77-2d3e4f5a6b7c');
+    expect(calls[0].url).toBe(
+      'https://brain.test/api/v2/reports/0b7f3c1e-5a4d-4c1b-9a77-2d3e4f5a6b7c/pdf',
+    );
+    expect(calls[0].headers.Accept).toBe('application/pdf');
+    expect(file.filename).toBe('TSPI-summary-v2-th-1.pdf');
+    expect(file.buffer.toString()).toBe('%PDF-1.7 x');
+    await expect(brain.getReportPdf('../x')).rejects.toBeInstanceOf(TspiBrainError);
+  });
+
   it('keeps the Brain problem code on a refusal', async () => {
     const { impl } = fakeFetch(409, {
       code: 'CONFIRMATION_EXPIRED',
