@@ -27,6 +27,10 @@ services:
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
       - MEILI_HOST=http://meilisearch:7700
+      # M12 Part A (patient names in chat): no conversation search index and no shared links.
+      - SEARCH=false
+      - ALLOW_SHARED_LINKS=false
+      - ALLOW_SHARED_LINKS_PUBLIC=false
       - LIBRECHAT_TEMP_CREDENTIALS_PATH=/app/data/.env.temp
       - RAG_PORT=${RAG_PORT:-8000}
       - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
@@ -67,6 +71,9 @@ services:
       - traefik.http.routers.admin-https.rule=Host(`admin.tspipro.com`)
       - traefik.http.routers.admin-https.tls=true
       - traefik.http.routers.admin-https.tls.certresolver=letsencrypt
+      # M12: only the named admins' networks reach the panel (comma-separated CIDRs in .env).
+      - traefik.http.middlewares.admin-ips.ipallowlist.sourcerange=${ADMIN_PANEL_ALLOWED_IPS:-0.0.0.0/0,::/0}
+      - traefik.http.routers.admin-https.middlewares=admin-ips
       - traefik.http.services.admin.loadbalancer.server.port=3000
     depends_on:
       - api
@@ -145,13 +152,15 @@ services:
     
   vectordb:
     image: pgvector/pgvector:0.8.0-pg15-trixie
+    # M12: no default credentials. The same POSTGRES_* values reach rag_api through .env.
+    # An existing volume keeps its old password: change it with ALTER USER (see docs/tspi-m12-phi.md).
     environment:
-      POSTGRES_DB: mydatabase
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-ragapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD for the RAG database}
     restart: always
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "myuser", "-d", "mydatabase"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -164,6 +173,9 @@ services:
     environment:
       - DB_HOST=vectordb
       - RAG_PORT=${RAG_PORT:-8000}
+      - POSTGRES_DB=${POSTGRES_DB:-mydatabase}
+      - POSTGRES_USER=${POSTGRES_USER:-ragapi}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD for the RAG database}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
       interval: 30s

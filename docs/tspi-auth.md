@@ -76,3 +76,13 @@ Deployment steps for the chat and the AI platform, with smoke tests:
 - The engine still trusts the MCP's service token + `X-TSPI-*` headers; it does not yet verify the
   user's token itself (§5b, PRD §9). Planned with the v2 engine.
 - WorkOS stays for external connectors, outside the module's chat → MCP → engine scope.
+
+## M12 changes
+
+- **2FA:** clinical accounts (`clinic_staff`, `clinician`, `reviewer`, `auditor`) and chat admins get
+  no TSPI token without two-factor authentication (`tspi.require2FA` in `tspi-librechat.yaml`, on by
+  default in production).
+- **`tspi_uid`:** sent while `TSPI_MCP_JWT_LEGACY_UID` is not `false`. Turn it off once the Brain's
+  `python -m scripts.identity_link_status` reports "ready".
+- Patient data in chat: see `docs/tspi-m12-phi.md`.
+

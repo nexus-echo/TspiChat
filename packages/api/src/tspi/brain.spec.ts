@@ -86,15 +86,13 @@ describe('createTspiBrainClient', () => {
     expect(calls[0].headers['X-TSPI-Service-Key']).toBeUndefined();
   });
 
-  it('sends the Open click and reads the PDF data', async () => {
+  it('sends the Open click and reads the user', async () => {
     const { calls, impl } = fakeFetch(200, { patient: { id: 'p1' } });
     const brain = createTspiBrainClient(user, { baseUrl: 'https://brain.test/', fetch: impl });
     await brain.openPatient('p1');
-    await brain.getReport('r1');
     await brain.getMe();
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       'PUT https://brain.test/api/v2/chat-contexts/current',
-      'GET https://brain.test/reports/r1',
       'GET https://brain.test/api/v2/me',
     ]);
     expect(calls[0].body).toEqual({ patient_id: 'p1' });

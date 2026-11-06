@@ -29,6 +29,13 @@
  *   `aud=tspi-api` (TSPI_BRAIN_JWT_AUDIENCE), which the Brain accepts without the MCP's service
  *   key and which no MCP tool call can carry.
  *
+ * - M12 2FA: users with a clinical role (`tspi.require2FARoles`, default clinic_staff, clinician,
+ *   reviewer, auditor and LibreChat admins) get no TSPI token without two-factor authentication
+ *   when `tspi.require2FA` is on (default: on in production). The policy is set from the app
+ *   config at load (`setTspiTokenPolicy`).
+ * - M12 `tspi_uid`: sent while TSPI_MCP_JWT_LEGACY_UID is not `false`. Turn it off once the
+ *   Brain's `python -m scripts.identity_link_status` reports "ready".
+ *
  * Used through the `{{TSPI_MCP_TOKEN}}` header placeholder in librechat.yaml, which only
  * resolves for operator-authored (yaml) server configs — see `utils/env.ts`.
  */
@@ -66,6 +73,56 @@ export interface TspiTokenUser {
   openidId?: string | null;
   tspiRole?: string | null;
   tspiClinicId?: string | null;
+  /** LibreChat role (`ADMIN` / `USER`). */
+  role?: string | null;
+  twoFactorEnabled?: boolean | null;
+}
+
+/** M12: who needs two-factor authentication before getting a TSPI token. */
+export interface TspiTokenPolicy {
+  require2FA?: boolean;
+  require2FARoles?: readonly string[];
+}
+
+export const DEFAULT_2FA_ROLES: readonly string[] = [
+  'clinic_staff',
+  'clinician',
+  'reviewer',
+  'auditor',
+  'ADMIN',
+];
+
+let tokenPolicy: TspiTokenPolicy = {};
+
+/** Set from the app config (`tspi` in librechat.yaml) when it is loaded. */
+export function setTspiTokenPolicy(policy: TspiTokenPolicy | null | undefined): void {
+  tokenPolicy = { ...(policy ?? {}) };
+}
+
+/** A clinical user without 2FA asked for a TSPI token while 2FA is required. */
+export class TspiTwoFactorRequiredError extends Error {
+  readonly code: 'TSPI_2FA_REQUIRED' = 'TSPI_2FA_REQUIRED';
+
+  constructor() {
+    super(
+      'Two-factor authentication is required for TSPI clinical access. Turn it on in Settings > Account, then start a new chat.',
+    );
+    this.name = 'TspiTwoFactorRequiredError';
+  }
+}
+
+function require2FA(): boolean {
+  return tokenPolicy.require2FA ?? process.env.NODE_ENV === 'production';
+}
+
+/** True when this user may not get a TSPI token until they turn on 2FA. */
+export function needsTwoFactor(user: TspiTokenUser): boolean {
+  if (!require2FA() || user.twoFactorEnabled === true) {
+    return false;
+  }
+  const roles = tokenPolicy.require2FARoles ?? DEFAULT_2FA_ROLES;
+  const tspiRole = resolveTspiRole(user.tspiRole);
+  return roles.includes(tspiRole) || (user.role === 'ADMIN' && roles.includes('ADMIN'));
 }
 
 export interface TspiMcpClaims {
@@ -78,7 +135,7 @@ export interface TspiMcpClaims {
   jti: string;
   scope: string;
   role: string;
-  tspi_uid: string;
+  tspi_uid?: string;
   cnv?: string;
   clinic_id?: string;
   email?: string;
@@ -210,8 +267,10 @@ function identityClaims(user: TspiTokenUser) {
     sub,
     scope,
     role,
-    tspi_uid: nonEmpty(user.openidId) ?? sub,
   };
+  if (process.env.TSPI_MCP_JWT_LEGACY_UID !== 'false') {
+    out.tspi_uid = nonEmpty(user.openidId) ?? sub;
+  }
   // `role` stays: the MCP's verifier checks it is a known TSPI role. Everything else about the
   // user comes from the Brain (M02 task 13).
   if (process.env.TSPI_MCP_TOKEN_LEGACY_CLAIMS === 'true') {
@@ -245,6 +304,9 @@ export function mintTspiMcpToken(
   nowMs: number = Date.now(),
   options: TspiMintOptions = {},
 ): string {
+  if (needsTwoFactor(user)) {
+    throw new TspiTwoFactorRequiredError();
+  }
   const config = getSigningConfig();
   const identity = identityClaims(user);
   const now = Math.floor(nowMs / 1000);

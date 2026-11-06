@@ -179,6 +179,7 @@ export const AppService = async (params?: {
     actions,
     balance,
     skillSync,
+    tspi: config.tspi as AppConfig['tspi'],
     webSearch,
     mcpSettings,
     fileStrategy,

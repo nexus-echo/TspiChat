@@ -1,7 +1,7 @@
 /**
  * TSPI Brain REST client for TspiChat's own server routes (M04).
  *
- * The PDF download, the Confirm / Cancel click on a pending change, and the Open click on a
+ * The PDF download (M11 report), the Confirm / Cancel click on a pending change, and the Open click on a
  * patient do not go through the model or an MCP tool. The route calls the Brain directly with a
  * token minted for the signed-in user with `aud=tspi-api`, which the Brain accepts without the
  * MCP's service key and which no tool call can carry. The token also carries the conversation
@@ -10,7 +10,6 @@
  * Configuration: TSPI_BRAIN_URL (the same setting `tspi-user` provisioning uses).
  */
 import type { TspiTokenUser } from '../auth/tspiMcpToken';
-import type { TspiPlanRecord } from './types';
 import { mintTspiMcpToken } from '../auth/tspiMcpToken';
 
 export type TspiBrainErrorCode =
@@ -85,8 +84,6 @@ function statusCode(status: number): TspiBrainErrorCode {
  * exported function needs an explicit return type.
  */
 export interface TspiBrainClient {
-  /** The v1 report record (same JSON the get_treatment_plan tool returns). */
-  getReport(reportId: string): Promise<TspiPlanRecord>;
   /** An M11 report's PDF, made and stored by the Brain. */
   getReportPdf(reportId: string): Promise<{ filename: string; buffer: Buffer }>;
   /** The Brain's view of the user (`v1_role`, memberships). */
@@ -157,13 +154,6 @@ export function createTspiBrainClient(
   }
 
   return {
-    /** The v1 report record (same JSON the get_treatment_plan tool returns). */
-    getReport: (reportId: string) => {
-      if (!SAFE_ID.test(reportId)) {
-        return Promise.reject(new TspiBrainError('invalid', 400, 'Invalid report id'));
-      }
-      return call<TspiPlanRecord>('GET', `/reports/${encodeURIComponent(reportId)}`);
-    },
     /**
      * An M11 report's PDF, made and stored by the Brain (WeasyPrint, English or Thai). The Brain
      * checks the audience (physician report: clinic only) and the identity projection.

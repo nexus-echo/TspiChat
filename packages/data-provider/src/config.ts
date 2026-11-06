@@ -2672,8 +2672,25 @@ export const langfuseConfigSchema = z.object({
 
 export type LangfuseConfig = z.infer<typeof langfuseConfigSchema>;
 
+/**
+ * TSPI (M12): clinical access settings for TspiChat.
+ * - `require2FA`: refuse TSPI tokens to users in `require2FARoles` without two-factor
+ *   authentication. Default: on when NODE_ENV is `production`.
+ * - `require2FARoles`: TSPI roles (`tspiRole`) that need 2FA, plus `ADMIN` for LibreChat admins.
+ * Chat retention uses LibreChat's own `interface.retentionMode: all` + `generalChatRetention`.
+ */
+export const tspiConfigSchema = z.object({
+  require2FA: z.boolean().optional(),
+  require2FARoles: z
+    .array(z.enum(['clinic_staff', 'clinician', 'reviewer', 'auditor', 'patient', 'ADMIN']))
+    .optional(),
+});
+
+export type TTspiConfig = z.infer<typeof tspiConfigSchema>;
+
 export const configSchema = z.object({
   version: z.string(),
+  tspi: tspiConfigSchema.optional(),
   cache: z.boolean().default(true),
   ocr: ocrSchema.optional(),
   webSearch: webSearchSchema.optional(),

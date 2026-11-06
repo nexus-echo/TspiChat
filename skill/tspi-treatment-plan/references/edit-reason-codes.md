@@ -1,16 +1,9 @@
-# Edit actions and reason codes for update_treatment_plan_mcp_tspi
+# Reason codes for plan adjustments and corrections
 
-Every edit action needs one reason code. Pick the closest match; put detail in `rationale`.
+Every adjustment or correction needs one reason code. Pick the closest match; put detail in `rationale`.
 
-| Action | Use it to | Required fields |
-| --- | --- | --- |
-| REMOVE_MODULE | Take a module out of the plan | module_code |
-| REJECT_MODULE | Mark a module as clinically rejected (kept in the record) | module_code |
-| CHANGE_DOSE | Change a module's dose | module_code, new_dose |
-| OVERRIDE_SAFETY | Keep a module despite an engine safety flag (needs a strong rationale) | module_code, rationale |
-| ADD_SECONDARY_AXIS | Add a secondary axis the engine did not include | axis_code |
-| REMOVE_SECONDARY_AXIS | Remove a secondary axis | axis_code |
-| ADD_NOTE | Add a clinician note to the plan | rationale |
+Used by `plan_adjust_step_mcp_tspi` (exclude_axis, include_axis, remove_module, add_module,
+change_dose) and `propose_change_mcp_tspi` (record and plan corrections).
 
 | Reason code | When to use |
 | --- | --- |
@@ -23,4 +16,4 @@ Every edit action needs one reason code. Pick the closest match; put detail in `
 | DIAGNOSTIC_UNCERTAINTY | Diagnosis not yet confirmed |
 | TREATMENT_RESPONSE | Based on how the patient responded so far |
 
-Editing a plan invalidates any earlier approval; the plan must be approved again.
+A plan correction makes a new version, which must be approved again.
