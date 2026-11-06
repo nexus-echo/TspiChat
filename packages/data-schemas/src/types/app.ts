@@ -72,6 +72,8 @@ export interface AppConfig {
   langfuse?: TCustomConfig['langfuse'];
   /** Skill sync configuration */
   skillSync?: SkillSyncConfig;
+  /** TSPI clinical access settings (M12): 2FA for clinical roles, chat retention */
+  tspi?: TCustomConfig['tspi'];
   /** File storage strategy ('local', 's3', 'firebase', 'azure_blob', 'cloudfront') */
   fileStrategy: FileStorage;
   /** File strategies configuration */

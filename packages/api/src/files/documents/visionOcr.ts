@@ -134,8 +134,8 @@ export async function ocrPageImage(image: Buffer, config: VisionOcrConfig): Prom
     ],
   };
   if (/(^|\.)openrouter\.ai$/i.test(new URL(url).hostname)) {
-    /* Health data: only route to providers that neither store nor train on prompts. */
-    body.provider = { data_collection: 'deny' };
+    /* Health data (M12): zero-data-retention endpoints only, and no training on prompts. */
+    body.provider = { zdr: true, data_collection: 'deny' };
   }
 
   const requestConfig: AxiosRequestConfig = applyAxiosProxyConfig(

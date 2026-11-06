@@ -126,7 +126,7 @@ describe('ocrPageImage', () => {
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
     expect(body.model).toBe('google/gemma-4-26b-a4b-it');
     expect(body.temperature).toBe(0);
-    expect(body.provider).toEqual({ data_collection: 'deny' });
+    expect(body.provider).toEqual({ zdr: true, data_collection: 'deny' });
     expect(body.messages[0].content[1].image_url.url).toBe(
       `data:image/png;base64,${Buffer.from('png').toString('base64')}`,
     );

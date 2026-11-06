@@ -1,9 +1,12 @@
 import { generateKeyPairSync, verify as cryptoVerify } from 'crypto';
 import {
+  needsTwoFactor,
   mintTspiMcpToken,
-  resetTspiMcpTokenCache,
   resolveTspiRole,
   TSPI_ROLE_SCOPES,
+  setTspiTokenPolicy,
+  resetTspiMcpTokenCache,
+  TspiTwoFactorRequiredError,
 } from './tspiMcpToken';
 import { processMCPEnv } from '~/utils/env';
 import scopesFile from './tspiScopes.json';
@@ -87,6 +90,57 @@ describe('tspiMcpToken', () => {
     const { payload } = decode(mintTspiMcpToken({ ...clinician, openidId: 'user_01WORKOS' }));
     expect(payload.sub).toBe(clinician.id);
     expect(payload.tspi_uid).toBe('user_01WORKOS');
+  });
+
+  it('drops tspi_uid with TSPI_MCP_JWT_LEGACY_UID=false (M12, after every user is linked)', () => {
+    process.env.TSPI_MCP_JWT_LEGACY_UID = 'false';
+    try {
+      const { payload } = decode(mintTspiMcpToken({ ...clinician, openidId: 'user_01WORKOS' }));
+      expect(payload.tspi_uid).toBeUndefined();
+      expect(payload.sub).toBe(clinician.id);
+    } finally {
+      delete process.env.TSPI_MCP_JWT_LEGACY_UID;
+    }
+  });
+
+  describe('2FA for clinical users (M12, DF10)', () => {
+    afterEach(() => setTspiTokenPolicy(undefined));
+
+    it('refuses clinical roles and admins without 2FA when required', () => {
+      setTspiTokenPolicy({ require2FA: true });
+      for (const tspiRole of ['clinician', 'reviewer', 'auditor', 'clinic_staff']) {
+        expect(() => mintTspiMcpToken({ ...clinician, tspiRole })).toThrow(
+          TspiTwoFactorRequiredError,
+        );
+      }
+      expect(() => mintTspiMcpToken({ id: 'a1', tspiRole: 'patient', role: 'ADMIN' })).toThrow(
+        TspiTwoFactorRequiredError,
+      );
+      expect(() => mintTspiMcpToken({ ...clinician, twoFactorEnabled: true })).not.toThrow();
+      expect(() => mintTspiMcpToken({ id: 'p1', tspiRole: 'patient' })).not.toThrow();
+    });
+
+    it('also refuses a cached token once 2FA is required', () => {
+      mintTspiMcpToken(clinician);
+      setTspiTokenPolicy({ require2FA: true });
+      expect(() => mintTspiMcpToken(clinician)).toThrow(TspiTwoFactorRequiredError);
+    });
+
+    it('follows the configured roles, and is on by default only in production', () => {
+      setTspiTokenPolicy({ require2FA: true, require2FARoles: ['reviewer'] });
+      expect(needsTwoFactor({ ...clinician })).toBe(false);
+      expect(needsTwoFactor({ ...clinician, tspiRole: 'reviewer' })).toBe(true);
+      setTspiTokenPolicy(undefined);
+      const nodeEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        expect(needsTwoFactor(clinician)).toBe(true);
+        process.env.NODE_ENV = 'development';
+        expect(needsTwoFactor(clinician)).toBe(false);
+      } finally {
+        process.env.NODE_ENV = nodeEnv;
+      }
+    });
   });
 
   it('gives no scopes to a user without a TSPI role', () => {

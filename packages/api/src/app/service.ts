@@ -7,6 +7,7 @@ import {
 } from '@librechat/data-schemas';
 import type { AppConfig, IConfig } from '@librechat/data-schemas';
 import type { Types } from 'mongoose';
+import { setTspiTokenPolicy } from '~/auth/tspiMcpToken';
 
 const BASE_CONFIG_KEY = '_BASE_';
 
@@ -201,6 +202,8 @@ export function createAppConfigService(deps: AppConfigServiceDeps): {
       }
 
       baseConfig = materializeConfigModelSpecs(baseConfig);
+      // M12: 2FA for clinical roles before a TSPI token is minted (auth/tspiMcpToken.ts).
+      setTspiTokenPolicy(baseConfig.tspi);
 
       if (baseConfig.availableTools) {
         await setCachedTools(baseConfig.availableTools);
