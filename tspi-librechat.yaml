@@ -24,7 +24,9 @@ interface:
   # every restart, which would also lock admins out. They are set per role instead, see
   # docs/tspi-day2-roles.md (USER = clinician view, ADMIN = everything).
   # {{user.name}} is the signed-in user's name (left out cleanly when the account has no name).
-  customWelcome: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Upload a lab report or describe symptoms to start a TSPI health analysis.'
+  # M12: the 2FA note is here, not left to the model: with no TSPI tools (token refused) the model
+  # may reply with nothing (scripted evaluation D20).
+  customWelcome: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to start a TSPI health analysis. Clinicians and clinic staff: TSPI tools need two-factor authentication (account menu > Settings > Account).'
   modelSelect: false
   parameters: false
   presets: false
