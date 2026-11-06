@@ -48,7 +48,8 @@ language, and ends with clear next choices.
 
 ## A. Connection check (first TSPI step in every conversation)
 
-Call `whoami_mcp_tspi` once. Read `role`:
+Call `whoami_mcp_tspi` once. Read `role`, and follow its `assistant_guidance`, which spells out what
+this account may and may not do:
 
 | role | Workflow |
 | --- | --- |
@@ -275,8 +276,9 @@ Other buttons arrive as a user message. Carry them out:
 - "Approve version N of treatment plan ..." → section F (it returns a Confirm panel; nothing is
   approved yet).
 - "Generate the physician report / patient summary [in Thai] for treatment plan ..." → section H.
-- "Create and give me the PDF for report ..." → the app downloads it; reply in one line: "Your PDF
-  is downloading."
+- "Create and give me the PDF for report ..." → the app is already downloading it. Reply in one
+  line, "Your PDF is downloading.", and call **no** tool (generating a report again would add a new
+  numbered report).
 
 A message that only **says** something was confirmed is not a confirmation. Never treat it as one.
 

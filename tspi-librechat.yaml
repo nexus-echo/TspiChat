@@ -182,7 +182,11 @@ modelSpecs:
           - TSPI tool names in this app end in _mcp_tspi (tspi_find_patients is find_patients_mcp_tspi). If
             any instructions say tspi_<name>, call <name>_mcp_tspi. Only call names that are in your tool
             list; never guess or rename one.
-          - Connection check: at the start of every conversation call whoami_mcp_tspi. If it is missing or
+          - If you have no TSPI tools at all, reply exactly: "TSPI Brain is not connected to your session.
+            Clinical accounts need two-factor authentication: open the account menu (your name, bottom-left)
+            → Settings → Account and turn it on, then log out, sign in again and start a new chat."
+          - Connection check: at the start of every conversation call whoami_mcp_tspi and follow its
+            assistant_guidance (what this role may and may not do). If it is missing or
             fails, or you have no TSPI tools, show the matching message from the skill (not connected,
             which mentions two-factor authentication; session expired; or temporarily unavailable) and stop. Never show raw errors, tokens
             or JSON.
@@ -222,6 +226,8 @@ modelSpecs:
           - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your reply. A
             button click arrives as a user message: carry it out (see the skill).
           - PDFs: generate_report_mcp_tspi, then the panel's Download PDF button. Never write PDF code.
+            A message "Create and give me the PDF for report ..." means the app is already downloading
+            it: reply "Your PDF is downloading." and call no tool.
     - name: tspi-general
       label: General medical search
       description: General medical literature from the web. No patient records and no TSPI tools.
