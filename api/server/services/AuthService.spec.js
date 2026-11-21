@@ -869,6 +869,7 @@ describe('requestPasswordReset', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     isEmailDomainAllowed.mockReturnValue(true);
+    checkEmailConfig.mockReturnValue(true);
     getAppConfig.mockResolvedValue({
       registration: { allowedDomains: ['example.com'] },
     });
@@ -927,6 +928,28 @@ describe('requestPasswordReset', () => {
 
     expect(result).not.toBeInstanceOf(Error);
     expect(result.message).toContain('If an account with that email exists');
+  });
+
+  it('never returns the reset link to the requester when email is not configured', async () => {
+    checkEmailConfig.mockReturnValue(false);
+    findUser.mockResolvedValue({ _id: 'victim', email: 'victim@example.com' });
+
+    const req = { body: { email: 'victim@example.com' }, ip: '127.0.0.1' };
+    const result = await requestPasswordReset(req);
+
+    expect(result.link).toBeUndefined();
+    expect(result.message).toContain('If an account with that email exists');
+    expect(createToken).not.toHaveBeenCalled();
+  });
+
+  it('emails the reset link and keeps it out of the response when email is configured', async () => {
+    findUser.mockResolvedValue({ _id: 'user-mail', email: 'user@example.com' });
+
+    const req = { body: { email: 'user@example.com' }, ip: '127.0.0.1' };
+    const result = await requestPasswordReset(req);
+
+    expect(result.link).toBeUndefined();
+    expect(createToken).toHaveBeenCalledTimes(1);
   });
 
   it('should only delete existing password reset tokens when issuing a new reset link', async () => {

@@ -506,9 +506,16 @@ const requestPasswordReset = async (req) => {
       message: 'If an account with that email exists, a password reset link has been sent to it.',
     };
   }
-  const emailEnabled = checkEmailConfig();
-
   logger.warn(`[requestPasswordReset] [Password reset request initiated] [Email: ${email}]`);
+
+  if (!checkEmailConfig()) {
+    logger.error(
+      `[requestPasswordReset] Email service not configured; reset refused. [Email: ${email}] [IP: ${req.ip}]`,
+    );
+    return {
+      message: 'If an account with that email exists, a password reset link has been sent to it.',
+    };
+  }
 
   if (!user) {
     logger.warn(`[requestPasswordReset] [No user found] [Email: ${email}] [IP: ${req.ip}]`);
@@ -534,27 +541,20 @@ const requestPasswordReset = async (req) => {
 
   const link = `${domains.client}/reset-password?token=${resetToken}&userId=${user._id}`;
 
-  if (emailEnabled) {
-    await sendEmail({
-      email: user.email,
-      subject: 'Password Reset Request',
-      payload: {
-        appName: process.env.APP_TITLE || 'TSPI Digital Twin',
-        name: user.name || user.username || user.email,
-        link: link,
-        year: new Date().getFullYear(),
-      },
-      template: 'requestPasswordReset.handlebars',
-    });
-    logger.info(
-      `[requestPasswordReset] Link emailed. [Email: ${email}] [ID: ${user._id}] [IP: ${req.ip}]`,
-    );
-  } else {
-    logger.info(
-      `[requestPasswordReset] Link issued. [Email: ${email}] [ID: ${user._id}] [IP: ${req.ip}]`,
-    );
-    return { link };
-  }
+  await sendEmail({
+    email: user.email,
+    subject: 'Password Reset Request',
+    payload: {
+      appName: process.env.APP_TITLE || 'TSPI Digital Twin',
+      name: user.name || user.username || user.email,
+      link: link,
+      year: new Date().getFullYear(),
+    },
+    template: 'requestPasswordReset.handlebars',
+  });
+  logger.info(
+    `[requestPasswordReset] Link emailed. [Email: ${email}] [ID: ${user._id}] [IP: ${req.ip}]`,
+  );
 
   return {
     message: 'If an account with that email exists, a password reset link has been sent to it.',

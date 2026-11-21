@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   isEnabled,
+  isPasswordResetEnabled,
   isLangfuseConnectionAvailable,
   isLangfuseFanoutEnabled,
   getBalanceConfig,
@@ -23,7 +24,7 @@ const { getAppConfig } = require('~/server/services/Config/app');
 const router = express.Router();
 const emailLoginEnabled =
   process.env.ALLOW_EMAIL_LOGIN === undefined || isEnabled(process.env.ALLOW_EMAIL_LOGIN);
-const passwordResetEnabled = isEnabled(process.env.ALLOW_PASSWORD_RESET);
+const passwordResetEnabled = isPasswordResetEnabled();
 
 const sharedLinksEnabled =
   process.env.ALLOW_SHARED_LINKS === undefined || isEnabled(process.env.ALLOW_SHARED_LINKS);
