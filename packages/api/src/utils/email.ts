@@ -1,4 +1,5 @@
 import { logger } from '@librechat/data-schemas';
+import { isEnabled } from './common';
 
 /**
  * Check if email configuration is set
@@ -22,4 +23,12 @@ export function checkEmailConfig(): boolean {
   }
 
   return hasMailgunConfig || hasSMTPConfig;
+}
+
+/**
+ * Password reset is offered only when `ALLOW_PASSWORD_RESET` is on and an email transport is
+ * configured: the reset link must reach the account owner's inbox, never the requester.
+ */
+export function isPasswordResetEnabled(): boolean {
+  return isEnabled(process.env.ALLOW_PASSWORD_RESET) && checkEmailConfig();
 }

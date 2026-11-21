@@ -1,8 +1,8 @@
-const { isEnabled } = require('@librechat/api');
+const { isPasswordResetEnabled } = require('@librechat/api');
 const { logger } = require('@librechat/data-schemas');
 
 function validatePasswordReset(req, res, next) {
-  if (isEnabled(process.env.ALLOW_PASSWORD_RESET)) {
+  if (isPasswordResetEnabled()) {
     next();
   } else {
     logger.warn(`Password reset attempt while not allowed. IP: ${req.ip}`);
