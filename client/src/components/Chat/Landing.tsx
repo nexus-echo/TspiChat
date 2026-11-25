@@ -102,10 +102,13 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const selectedAgent =
     isAgent && conversation?.agent_id != null ? agentsMap?.[conversation.agent_id] : undefined;
 
-  const customWelcome =
+  const welcomeByRole = startupConfig?.interface?.customWelcomeByRole;
+  const roleWelcome = user?.tspiRole != null ? welcomeByRole?.[user.tspiRole] : undefined;
+  const defaultWelcome =
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? startupConfig.interface.customWelcome
       : undefined;
+  const customWelcome = roleWelcome ?? defaultWelcome;
 
   const scheduledGreeting = useGreeting(user?.name);
 

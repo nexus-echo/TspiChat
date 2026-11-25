@@ -6,11 +6,13 @@ cache: true
 registration:
   socialLogins: ['google', 'github']
 
-# M12 (DF10): no TSPI token for clinical accounts without two-factor authentication.
-# Roles: TSPI roles (tspiRole) plus ADMIN for the chat's admins. Patients are not required.
+# TSPI access. 2FA is off for everyone (it was required for clinical roles in M12, DF10); turn
+# it back on with require2FA: true, require2FARoles: [clinic_staff, clinician, reviewer, auditor, ADMIN].
+# defaultRole: every signed-in account without an admin-set tspiRole (everyone who signs up) uses
+# TSPI as a patient. Needs IDENTITY_SELF_SERVICE_PATIENTS=true on tspi-brain.
 tspi:
-  require2FA: true
-  require2FARoles: [clinic_staff, clinician, reviewer, auditor, ADMIN]
+  require2FA: false
+  defaultRole: patient
 
 # TSPI Digital Twin — clinician chat for TSPI Brain.
 # Day 1: WorkOS login, per-user token passthrough to the TSPI MCP, one locked clinical model spec.
@@ -28,9 +30,14 @@ interface:
   # every restart, which would also lock admins out. They are set per role instead, see
   # docs/tspi-day2-roles.md (USER = clinician view, ADMIN = everything).
   # {{user.name}} is the signed-in user's name (left out cleanly when the account has no name).
-  # M12: the 2FA note is here, not left to the model: with no TSPI tools (token refused) the model
-  # may reply with nothing (scripted evaluation D20).
-  customWelcome: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to start a TSPI health analysis. Clinicians and clinic staff: TSPI tools need two-factor authentication (account menu > Settings > Account).'
+  # customWelcome is for patients, including every account without a tspiRole (tspi.defaultRole);
+  # customWelcomeByRole overrides it for the other TSPI roles.
+  customWelcome: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Describe your symptoms or upload a lab report to start your TSPI health analysis.'
+  customWelcomeByRole:
+    clinician: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to start a TSPI health analysis.'
+    reviewer: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to start a TSPI health analysis.'
+    clinic_staff: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to start a TSPI health analysis.'
+    auditor: 'Hi {{user.name}}, welcome to TSPI Digital Twin. Find a patient to review their TSPI record.'
   modelSelect: false
   parameters: false
   presets: false
@@ -78,7 +85,6 @@ interface:
       4. **Patient information.** Clinicians may work with patient records, including names, only through the TSPI tools, for patients in their own clinic who have consented. Patient details are never used for web searches. Use the separate "General medical search" assistant for general questions, and never put patient details there.
       5. **Emergencies.** TSPI Digital Twin is not for emergencies. If you have severe symptoms, call your local emergency number (India 112, Thailand 1669) or go to the nearest hospital.
       6. **Records.** Your conversations, uploads, reports, approvals and edits are stored and logged under your account, as described in the Privacy Policy. Conversations and their files are deleted after 180 days; the clinical record stays in TSPI Brain.
-      7. **Clinical accounts need two-factor authentication** before TSPI tools can be used.
 
 # Memories: off (M12). A background memory model would see patient details.
 memory:
@@ -191,7 +197,7 @@ modelSpecs:
           - Connection check: at the start of every conversation call whoami_mcp_tspi and follow its
             assistant_guidance (what this role may and may not do). If it is missing or
             fails, or you have no TSPI tools, show the matching message from the skill (not connected,
-            which mentions two-factor authentication; session expired; or temporarily unavailable) and stop. Never show raw errors, tokens
+            session expired, or temporarily unavailable) and stop. Never show raw errors, tokens
             or JSON.
           - Role clinician or reviewer: clinician workflow. clinic_staff: staff workflow. patient: patient
             workflow. Any other role: say there is no clinical access for this account and point to
@@ -229,9 +235,8 @@ modelSpecs:
           - When a TSPI result includes a button panel, put its \ui{...} marker at the end of your reply. A
             button click arrives as a user message: carry it out (see the skill).
           - Only if your tool list has no tool ending in _mcp_tspi at all, reply exactly: "TSPI Brain is not
-            connected to your session. Clinical accounts need two-factor authentication: open the account
-            menu (your name, bottom-left) → Settings → Account and turn it on, then log out, sign in again
-            and start a new chat."
+            connected to your session. Please start a new chat. If it still happens, contact TSPI Digital
+            Twin support: https://tspi-main.vercel.app/contact"
           - PDFs: generate_report_mcp_tspi, then the panel's Download PDF button. Never write PDF code.
             A message "Create and give me the PDF for report ..." means the app is already downloading
             it: reply "Your PDF is downloading." and call no tool.

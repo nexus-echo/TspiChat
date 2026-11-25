@@ -202,7 +202,7 @@ export function createAppConfigService(deps: AppConfigServiceDeps): {
       }
 
       baseConfig = materializeConfigModelSpecs(baseConfig);
-      // M12: 2FA for clinical roles before a TSPI token is minted (auth/tspiMcpToken.ts).
+      // TSPI token policy: 2FA for clinical roles and the default role (auth/tspiMcpToken.ts).
       setTspiTokenPolicy(baseConfig.tspi);
 
       if (baseConfig.availableTools) {

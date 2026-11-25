@@ -1,6 +1,7 @@
 import { generateKeyPairSync, verify as cryptoVerify } from 'crypto';
 import {
   needsTwoFactor,
+  effectiveTspiRole,
   mintTspiMcpToken,
   resolveTspiRole,
   TSPI_ROLE_SCOPES,
@@ -101,6 +102,29 @@ describe('tspiMcpToken', () => {
     } finally {
       delete process.env.TSPI_MCP_JWT_LEGACY_UID;
     }
+  });
+
+  describe('default role (tspi.defaultRole)', () => {
+    afterEach(() => setTspiTokenPolicy(undefined));
+
+    it('gives a user with no tspiRole the default role and its scopes', () => {
+      expect(decode(mintTspiMcpToken({ id: 'new-1' })).payload.role).toBe('unassigned');
+      setTspiTokenPolicy({ defaultRole: 'patient' });
+      const { payload } = decode(mintTspiMcpToken({ id: 'new-2' }));
+      expect(payload.role).toBe('patient');
+      expect(payload.scope).toBe(TSPI_ROLE_SCOPES.patient.join(' '));
+      expect(effectiveTspiRole({ tspiRole: null })).toBe('patient');
+    });
+
+    it('never overrides an admin-set role', () => {
+      setTspiTokenPolicy({ defaultRole: 'patient' });
+      expect(decode(mintTspiMcpToken(clinician)).payload.role).toBe('clinician');
+    });
+
+    it('needs no 2FA for anyone when require2FA is off', () => {
+      setTspiTokenPolicy({ require2FA: false, defaultRole: 'patient' });
+      expect(() => mintTspiMcpToken({ ...clinician, role: 'ADMIN' })).not.toThrow();
+    });
   });
 
   describe('2FA for clinical users (M12, DF10)', () => {

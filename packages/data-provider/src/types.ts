@@ -15,7 +15,11 @@ import type {
   CodeWorkspaceOperation,
   CodeWorkspaceSelection,
 } from './code/workspace';
-import type { CodeEnvironmentUserConfigSchema, CodeEnvironmentUserSettings } from './config';
+import type {
+  TTspiRole,
+  CodeEnvironmentUserSettings,
+  CodeEnvironmentUserConfigSchema,
+} from './config';
 import type { Agent, EToolResources, StatefulCodeEnvironment } from './types/assistants';
 import type { CodeApprovalMode } from './code/approval';
 import type { RefillIntervalUnit } from './balance';
@@ -313,6 +317,8 @@ export type TUser = {
   tenantId?: string;
   plugins?: string[];
   twoFactorEnabled?: boolean;
+  /** TSPI role set by an admin; absent for accounts using `tspi.defaultRole`. */
+  tspiRole?: TTspiRole;
   backupCodes?: TBackupCode[];
   personalization?: {
     memories?: boolean;
