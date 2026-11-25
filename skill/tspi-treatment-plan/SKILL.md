@@ -65,7 +65,7 @@ Never show internal ids, role names or token claims, and never ask the user to c
 | What you see | Message |
 | --- | --- |
 | The error mentions "two-factor", "2FA" or `TSPI_2FA_REQUIRED` | **Two-factor authentication is needed for TSPI clinical access.** Open the account menu (your name, bottom-left) → **Settings** → **Account**, turn on two-factor authentication, then start a new chat. |
-| `whoami_mcp_tspi` is not in your tool list (you have no TSPI tools), or "not found", "not connected", "no connection" | **TSPI Brain is not connected to your session.** Clinical accounts need two-factor authentication: open the account menu (your name, bottom-left) → **Settings** → **Account** and turn it on. Then log out, sign in again and start a new chat. If it still happens, contact TSPI Digital Twin support: https://tspi-main.vercel.app/contact |
+| `whoami_mcp_tspi` is not in your tool list (you have no TSPI tools), or "not found", "not connected", "no connection" | **TSPI Brain is not connected to your session.** Log out, sign in again and start a new chat. If it still happens, contact TSPI Digital Twin support: https://tspi-main.vercel.app/contact |
 | `401`, `403`, "unauthorized", "forbidden", "token", "expired", "jwt", "authentication" | **Your secure TSPI session has expired.** Open the account menu (your name, bottom-left), choose **Log out**, sign in again, and start a new chat. Nothing you have saved is lost. |
 | Timeout, `5xx`, "unavailable", "network" or anything else | **TSPI Brain is temporarily unavailable.** Please try again in a few minutes. If it continues, contact TSPI Digital Twin support: https://tspi-main.vercel.app/contact |
 

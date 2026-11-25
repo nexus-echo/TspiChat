@@ -33,6 +33,9 @@
  *   reviewer, auditor and LibreChat admins) get no TSPI token without two-factor authentication
  *   when `tspi.require2FA` is on (default: on in production). The policy is set from the app
  *   config at load (`setTspiTokenPolicy`).
+ * - Default role: a user with no `tspiRole` gets `tspi.defaultRole` (e.g. `patient`) in the token,
+ *   so everyone who signs up can use TSPI as a patient. The Brain grants the matching role
+ *   (IDENTITY_SELF_SERVICE_PATIENTS); an admin-set `tspiRole` always wins.
  * - M12 `tspi_uid`: sent while TSPI_MCP_JWT_LEGACY_UID is not `false`. Turn it off once the
  *   Brain's `python -m scripts.identity_link_status` reports "ready".
  *
@@ -82,6 +85,8 @@ export interface TspiTokenUser {
 export interface TspiTokenPolicy {
   require2FA?: boolean;
   require2FARoles?: readonly string[];
+  /** The TSPI role of a user whose account has no `tspiRole` (`tspi.defaultRole`). */
+  defaultRole?: string;
 }
 
 export const DEFAULT_2FA_ROLES: readonly string[] = [
@@ -101,7 +106,7 @@ export function setTspiTokenPolicy(policy: TspiTokenPolicy | null | undefined): 
 
 /** A clinical user without 2FA asked for a TSPI token while 2FA is required. */
 export class TspiTwoFactorRequiredError extends Error {
-  readonly code: 'TSPI_2FA_REQUIRED' = 'TSPI_2FA_REQUIRED';
+  readonly code = 'TSPI_2FA_REQUIRED' as const;
 
   constructor() {
     super(
@@ -115,13 +120,19 @@ function require2FA(): boolean {
   return tokenPolicy.require2FA ?? process.env.NODE_ENV === 'production';
 }
 
+/** The user's TSPI role: their own `tspiRole`, else the configured `tspi.defaultRole`. */
+export function effectiveTspiRole(user: Pick<TspiTokenUser, 'tspiRole'>): TspiRole | 'unassigned' {
+  const own = resolveTspiRole(user.tspiRole);
+  return own === 'unassigned' ? resolveTspiRole(tokenPolicy.defaultRole) : own;
+}
+
 /** True when this user may not get a TSPI token until they turn on 2FA. */
 export function needsTwoFactor(user: TspiTokenUser): boolean {
   if (!require2FA() || user.twoFactorEnabled === true) {
     return false;
   }
   const roles = tokenPolicy.require2FARoles ?? DEFAULT_2FA_ROLES;
-  const tspiRole = resolveTspiRole(user.tspiRole);
+  const tspiRole = effectiveTspiRole(user);
   return roles.includes(tspiRole) || (user.role === 'ADMIN' && roles.includes('ADMIN'));
 }
 
@@ -261,7 +272,7 @@ function identityClaims(user: TspiTokenUser) {
   if (!sub) {
     throw new Error('TSPI MCP token minting requires an authenticated user');
   }
-  const role = resolveTspiRole(user.tspiRole);
+  const role = effectiveTspiRole(user);
   const scope = role === 'unassigned' ? '' : TSPI_ROLE_SCOPES[role].join(' ');
   const out: Omit<TspiMcpClaims, 'iss' | 'aud' | 'iat' | 'nbf' | 'exp' | 'jti'> = {
     sub,

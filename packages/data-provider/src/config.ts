@@ -1856,6 +1856,16 @@ export const interfaceSchema = z
       .optional(),
     termsOfService: termsOfServiceSchema.optional(),
     customWelcome: z.string().optional(),
+    /** TSPI: welcome text per TSPI role (`tspiRole`); `customWelcome` covers every other user. */
+    customWelcomeByRole: z
+      .object({
+        patient: z.string().optional(),
+        clinic_staff: z.string().optional(),
+        clinician: z.string().optional(),
+        reviewer: z.string().optional(),
+        auditor: z.string().optional(),
+      })
+      .optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     parameters: z.boolean().optional(),
@@ -2677,10 +2687,23 @@ export type LangfuseConfig = z.infer<typeof langfuseConfigSchema>;
  * - `require2FA`: refuse TSPI tokens to users in `require2FARoles` without two-factor
  *   authentication. Default: on when NODE_ENV is `production`.
  * - `require2FARoles`: TSPI roles (`tspiRole`) that need 2FA, plus `ADMIN` for LibreChat admins.
+ * - `defaultRole`: the TSPI role of a signed-in user whose account has no `tspiRole` (for example
+ *   everyone who signs up). Unset: no TSPI access until an admin sets a role.
  * Chat retention uses LibreChat's own `interface.retentionMode: all` + `generalChatRetention`.
  */
+export const tspiRoleSchema = z.enum([
+  'patient',
+  'clinic_staff',
+  'clinician',
+  'reviewer',
+  'auditor',
+]);
+
+export type TTspiRole = z.infer<typeof tspiRoleSchema>;
+
 export const tspiConfigSchema = z.object({
   require2FA: z.boolean().optional(),
+  defaultRole: tspiRoleSchema.optional(),
   require2FARoles: z
     .array(z.enum(['clinic_staff', 'clinician', 'reviewer', 'auditor', 'patient', 'ADMIN']))
     .optional(),

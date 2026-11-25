@@ -61,6 +61,7 @@ const PUBLIC_USER_RESPONSE_FIELDS = [
   'createdAt',
   'updatedAt',
   'tenantId',
+  'tspiRole',
 ];
 
 const sanitizeUserForResponse = (user) => {
